@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
 import { register } from 'register-service-worker'
-
+console.log('NODE_ENV:', process.env.NODE_ENV);
 const baseUrl = process.env.NODE_ENV === 'production' ? '/fastm8-frontend/' : '/';
 
 register(`${baseUrl}service-worker.js`, {
