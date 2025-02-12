@@ -30,7 +30,7 @@ const sendLocalNotification = () => {
   if (Notification.permission === "granted") {
     new Notification("FastM8 Alert", {
       body: "This is a local notification!",
-      icon: "/fastm8-frontend/icons/icon-192x192.png", // Ensure icon exists
+      icon: "/fastm8-frontend/img/icons/icon-192x192.png", // Ensure icon exists
     });
     console.log("Local notification sent!");
   } else {
@@ -49,7 +49,7 @@ const sendPushNotification = async () => {
     const registration = await navigator.serviceWorker.ready;
     registration.showNotification("FastM8 Push", {
       body: "This is a simulated push notification!",
-      icon: "/fastm8-frontend/icons/icon-192x192.png",
+      icon: "/fastm8-frontend/img/icons/icon-192x192.png",
     });
     console.log("Push notification triggered!");
   } catch (error) {
