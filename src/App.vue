@@ -12,31 +12,55 @@ onMounted(async () => {
 
 // Request notification permission
 const requestPermission = async () => {
-  const permission = await Notification.requestPermission();
-  if (permission === "granted") {
-    console.log("Notifications enabled!");
-  } else {
-    console.log("Notifications denied!");
+  try {
+    const permission = await Notification.requestPermission();
+    console.log("Notification Permission:", permission);
+  } catch (error) {
+    console.error("Error requesting notification permission:", error);
   }
 };
 
-// Simulate sending a push notification
-const sendPushNotification = async () => {
-  if ('PushManager' in window) {
-    navigator.serviceWorker.ready.then(serviceWorkerRegistration => {
-      serviceWorkerRegistration.showNotification('Hello World', {
-        body: 'This is a simulated push notification from the Vue app!',
-        icon: '/icons/icon-192x192.png', // Customize icon
-      });
+// Send a local notification (works immediately if permission is granted)
+const sendLocalNotification = () => {
+  if (!("Notification" in window)) {
+    console.error("This browser does not support notifications.");
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    new Notification("FastM8 Alert", {
+      body: "This is a local notification!",
+      icon: "/fastm8-frontend/icons/icon-192x192.png", // Ensure icon exists
     });
+    console.log("Local notification sent!");
   } else {
-    alert('Push notifications are not supported in your browser.');
+    console.warn("Notification permission not granted.");
+  }
+};
+
+// Simulate a push notification using service worker
+const sendPushNotification = async () => {
+  if (!("serviceWorker" in navigator)) {
+    alert("Service workers are not supported in your browser.");
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    registration.showNotification("FastM8 Push", {
+      body: "This is a simulated push notification!",
+      icon: "/fastm8-frontend/icons/icon-192x192.png",
+    });
+    console.log("Push notification triggered!");
+  } catch (error) {
+    console.error("Error triggering push notification:", error);
   }
 };
 </script>
 
 <template>
   <button @click="requestPermission">Enable Notifications</button>
+  <button @click="sendLocalNotification">Send Local Notification</button>
   <button @click="sendPushNotification">Send Push Notification</button>
   <div>
     <h1>FastM8</h1>
@@ -45,4 +69,7 @@ const sendPushNotification = async () => {
 </template>
 
 <style scoped>
+button {
+  margin: 5px;
+}
 </style>
