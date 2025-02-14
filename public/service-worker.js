@@ -1,14 +1,18 @@
-self.addEventListener("push", (event) => {
-    const options = {
-      body: event.data ? event.data.text() : "New notification!",
-      icon: "/icons/icon-192x192.png"
-    };
-    event.waitUntil(self.registration.showNotification("FastM8", options));
-  });
+self.addEventListener("install", (event) => {
+  console.log("Service Worker installing.");
+  self.skipWaiting();
+});
 
-self.addEventListener("notificationclick", (event) => {
-    event.notification.close();
-    event.waitUntil(
-        clients.openWindow("https://your-website.com")  // Customize this URL
-    );
+self.addEventListener("activate", (event) => {
+  console.log("Service Worker activated.");
+});
+
+self.addEventListener("push", (event) => {
+  const options = {
+      body: "You have a new notification!",
+      icon: "/fastm8-frontend/img/icons/icon-192x192.png",
+  };
+  event.waitUntil(
+      self.registration.showNotification("FastM8", options)
+  );
 });
