@@ -1,72 +1,83 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import ProgressCircle from "../components/ProgressCircle.vue";
 
-// Router instance for redirection
 const router = useRouter();
 
 // Logout function
 const logout = () => {
-  localStorage.removeItem("userToken"); // Remove token from localStorage
-  router.push("/fastm8-frontend/login"); // Redirect to login page
+  localStorage.removeItem("userToken");
+  router.push("/fastm8-frontend/login");
 };
-// startTime should come from the endpoint while fasting window should be a setting in the app
-// Set start time and fasting window
-const startTime = new Date("2025-02-14T08:00:00");
-const fastingWindow = 16; // in hours
 
-// Calculate fasting end time
+// Track fasting state
+const startTime = ref(new Date("2025-02-14T08:00:00")); // Replace with API-driven value
+const fastingWindow = 16; // Fasting window in hours
+const progress = ref(0);
+const elapsedTime = ref({ hours: 0, minutes: 0 });
+
+// Compute fasting end time
 const fastingEndTime = computed(() => {
-  let end = new Date(startTime);
+  if (!startTime.value) return null;
+  const end = new Date(startTime.value);
   end.setHours(end.getHours() + fastingWindow);
   return end;
 });
 
-// Reactive state for progress and elapsed time
-const progress = ref(0);
-const elapsedTime = ref({ hours: 0, minutes: 0 });
-
-// Function to update progress and elapsed time
-const updateProgress = () => {
-  const now = new Date();
-  const totalDuration = fastingEndTime.value - startTime; // Total fasting window in ms
-  const elapsedDuration = now - startTime; // Time passed since start time
-
-  // Update elapsed time (hours and minutes)
-  const hours = Math.floor(elapsedDuration / (1000 * 60 * 60));
-  const minutes = Math.floor((elapsedDuration % (1000 * 60 * 60)) / (1000 * 60));
-  elapsedTime.value = { hours, minutes };
-
-  // Update progress percentage
-  if (now < startTime) {
-    progress.value = 0; // Before start time, no progress
-  } else if (now > fastingEndTime.value) {
-    progress.value = 100; // After fasting end time, 100% progress
+// Toggle fasting state
+const toggleFast = () => {
+  if (startTime.value) {
+    startTime.value = null;
+    progress.value = 0;
+    elapsedTime.value = { hours: 0, minutes: 0 };
   } else {
-    progress.value = Math.min((elapsedDuration / totalDuration) * 100, 100);
+    startTime.value = new Date(); // Set new start time
   }
 };
 
-// Recalculate progress every minute
+// Compute button text
+const startOrStop = computed(() => (startTime.value ? "Stop Fast" : "Start Fast"));
+
+// Update progress & elapsed time
+const updateProgress = () => {
+  if (!startTime.value) {
+    progress.value = 0;
+    return;
+  }
+
+  const now = new Date();
+  const totalDuration = fastingEndTime.value - startTime.value;
+  const elapsedDuration = now - startTime.value;
+
+  // Calculate elapsed time in hours & minutes
+  elapsedTime.value = {
+    hours: Math.floor(elapsedDuration / (1000 * 60 * 60)),
+    minutes: Math.floor((elapsedDuration % (1000 * 60 * 60)) / (1000 * 60)),
+  };
+
+  // Calculate fasting progress
+  progress.value = now >= fastingEndTime.value ? 100 : (elapsedDuration / totalDuration) * 100;
+};
+
+// Update every minute
 let interval = null;
 onMounted(() => {
-  updateProgress(); // Initial calculation
-  interval = setInterval(updateProgress, 60000); // Update every minute
+  updateProgress();
+  interval = setInterval(updateProgress, 60000);
 });
 
 onUnmounted(() => {
   if (interval) clearInterval(interval);
 });
 
-// Format dates for display
+// Format times for display
 const formattedStartTime = computed(() =>
-  startTime.toLocaleString("en-US", 
-  { weekday: "long", hour: "numeric", minute: "2-digit", hour12: true })
+  startTime.value ? startTime.value.toLocaleString("en-US", { weekday: "long", hour: "numeric", minute: "2-digit", hour12: true }) : "Not started"
 );
+
 const formattedEndTime = computed(() =>
-  fastingEndTime.value.toLocaleString("en-US", 
-  { weekday: "long", hour: "numeric", minute: "2-digit", hour12: true })
+  fastingEndTime.value ? fastingEndTime.value.toLocaleString("en-US", { weekday: "long", hour: "numeric", minute: "2-digit", hour12: true }) : "N/A"
 );
 </script>
 
@@ -77,17 +88,15 @@ const formattedEndTime = computed(() =>
 
     <h1>FastM8</h1>
     <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
-    
-    <!-- ProgressCircle component with reactive progress -->
     <p>Here is how far into your fasting window you are:</p>
     <ProgressCircle :progress="progress" />
 
     <p>Your scheduled fasting window closes on <strong>{{ formattedEndTime }}</strong></p>
 
-    <!-- Display the elapsed time in hours and minutes -->
     <p>Fasting time that has elapsed: {{ elapsedTime.hours }} hours, {{ elapsedTime.minutes }} minutes</p>
 
-    <!-- Logout button -->
+    <button @click="toggleFast">{{ startOrStop }}</button>
+    <br />
     <button @click="logout">Logout</button>
   </div>
 </template>
