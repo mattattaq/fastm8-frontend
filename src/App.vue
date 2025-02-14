@@ -11,8 +11,8 @@ const isAuthenticated = () => localStorage.getItem("userToken") !== null;
 
 // Redirect if not authenticated
 onMounted(async () => {
-  if (!isAuthenticated() && router.currentRoute.value.path !== "/login") {
-    router.push("/login");
+  if (!isAuthenticated() && router.currentRoute.value.path !== "/fastm8-frontend/login") {
+    router.push("/fastm8-frontend/login");
   }
   serverStatus.value = (await checkServerStatus()) ? "Backend is up!" : "Error connecting.";
 });

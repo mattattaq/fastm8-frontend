@@ -8,9 +8,9 @@ const router = useRouter();
 onMounted(() => {
   const isLoggedIn = localStorage.getItem("userToken") !== null;
   if (isLoggedIn) {
-    router.push("/dashboard");
+    router.push("/fastm8-frontend/dashboard");
   } else {
-    router.push("/login");
+    router.push("/fastm8-frontend/login");
   }
 });
 </script>

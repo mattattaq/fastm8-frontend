@@ -9,19 +9,19 @@ const isAuthenticated = () => {
 
 const routes = [
   {
-    path: "/",
+    path: "/fastm8-frontend/",
     component: Home,
   },
   {
-    path: "/login",
+    path: "/fastm8-frontend/login",
     component: Login,
   },
   {
-    path: "/dashboard",
+    path: "/fastm8-frontend/dashboard",
     component: Dashboard,
     beforeEnter: (to, from, next) => {
       if (!isAuthenticated()) {
-        next("/login");
+        next("/fastm8-frontend/login");
       } else {
         next();
       }

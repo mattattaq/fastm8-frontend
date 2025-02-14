@@ -18,7 +18,7 @@ const login = async () => {
   try {
     const response = await loginUser(email.value, password.value);
     localStorage.setItem("userToken", response.token); // Store token
-    router.push("/dashboard"); // Redirect after login
+    router.push("/fastm8-frontend/dashboard"); // Redirect after login
   } catch (error) {
     loginMessage.value = "Login failed: " + (error.response?.data?.error || error.message);
   }

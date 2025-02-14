@@ -6,7 +6,7 @@ const router = useRouter();
 
 const logout = () => {
   localStorage.removeItem("userToken"); // Remove token
-  router.push("/login"); // Redirect to login
+  router.push("/fastm8-frontend/login"); // Redirect to login
 };
 </script>
 
