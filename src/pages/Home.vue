@@ -1,0 +1,20 @@
+<!-- src/pages/Home.vue -->
+<script setup>
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+
+onMounted(() => {
+  const isLoggedIn = localStorage.getItem("userToken") !== null;
+  if (isLoggedIn) {
+    router.push("/dashboard");
+  } else {
+    router.push("/login");
+  }
+});
+</script>
+
+<template>
+  <p>Redirecting...</p>
+</template>
