@@ -1,7 +1,7 @@
 {
     "name": "FastM8",
     "short_name": "FastM8",
-    "start_url": "/",
+    "start_url": "/fastm8-frontend/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#4CAF50",
