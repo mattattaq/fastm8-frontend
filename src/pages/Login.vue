@@ -10,49 +10,48 @@ const loginMessage = ref("");
 const isFocused = ref(false);  // Track if any input field is focused
 let typingInterval = null;  // Store the interval for alternating text
 
-// To track the alternation of "M" and "^"
-const alternatingText = ref("M"); // Initially "M"
+// Track the alternation of "M" and "^"
+const alternatingText = ref("M");
 
-// Computed property for dynamic text effect (Alternating M with ^)
+// Computed property for dynamic text effect
 const dynamicText = computed(() => {
   const baseText = "FastM8";
   const mIndex = baseText.indexOf("M");
-  
-  // Replace the "M" with the alternating value
   return baseText.slice(0, mIndex) + alternatingText.value + baseText.slice(mIndex + 1);
 });
 
-// Function to start alternating the text
+// Start alternating the "M" effect
 const startAlternating = () => {
-  // Start alternating between "M" and "^" every 500ms
-  if (!typingInterval) {  // Prevent setting multiple intervals
+  if (!typingInterval) {
     typingInterval = setInterval(() => {
       alternatingText.value = alternatingText.value === "M" ? "^" : "M";
     }, 500);
   }
 };
 
-// Function to stop alternating the text
+// Stop alternating and reset text
 const stopAlternating = () => {
   if (typingInterval) {
-    clearInterval(typingInterval); // Clear the interval
-    typingInterval = null; // Reset the interval variable
+    clearInterval(typingInterval);
+    typingInterval = null;
   }
-  alternatingText.value = "M"; // Reset to default "M" when stopped
+  alternatingText.value = "M";
 };
 
-// Function to handle input focus and blur events
+// Handle input focus and blur
 const handleFocus = () => {
   isFocused.value = true;
-  startAlternating();  // Start alternating when focused
+  startAlternating();
 };
 
 const handleBlur = () => {
   isFocused.value = false;
-  stopAlternating();  // Stop alternating when blurred
+  stopAlternating();
 };
 
+// Handle login
 const login = async () => {
+  console.log("Logging in...")
   if (!email.value || !password.value) {
     loginMessage.value = "Please enter email and password.";
     return;
@@ -60,8 +59,16 @@ const login = async () => {
 
   try {
     const response = await loginUser(email.value, password.value);
-    localStorage.setItem("userToken", response.token); // Store token
-    router.push("/fastm8-frontend/dashboard"); // Redirect after login
+
+    // Store token and userId in localStorage
+    localStorage.setItem("userToken", response.token);
+    localStorage.setItem("userId", response.userId);
+    localStorage.setItem("userName", response.username)
+    // Redirect to dashboard
+    router.push("/fastm8-frontend/dashboard").catch(err => {
+      console.error("Router push failed:", err);
+    });
+
   } catch (error) {
     loginMessage.value = "Login failed: " + (error.response?.data?.error || error.message);
   }
@@ -70,7 +77,6 @@ const login = async () => {
 
 <template>
   <div>
-    <!-- Dynamic text effect on h2 -->
     <h2 :class="{'eating': isFocused}">{{ dynamicText }}</h2>
 
     <form @submit.prevent="login">
@@ -86,7 +92,6 @@ const login = async () => {
 </template>
 
 <style scoped>
-/* Add some basic styles for h2 */
 h2 {
   font-size: 2rem;
   font-weight: bold;
@@ -97,16 +102,9 @@ h2 {
   animation: eatM 0.5s ease-in-out forwards;
 }
 
-/* CSS keyframe animation for the "eating" effect */
 @keyframes eatM {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1) rotate(-10deg);
-  }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1) rotate(-10deg); }
 }
 </style>

@@ -15,6 +15,13 @@ const routes = [
   {
     path: "/fastm8-frontend/login",
     component: Login,
+    beforeEnter: (to, from, next) => {
+      // Clear local storage when the user goes to the login page
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("userName");
+      next(); // Proceed with navigating to the login page
+    },
   },
   {
     path: "/fastm8-frontend/dashboard",
