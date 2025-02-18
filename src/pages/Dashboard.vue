@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import ProgressCircle from "../components/ProgressCircle.vue";
+import Footer from "../components/Footer.vue";
 
 const router = useRouter();
 const startTime = ref(null);
@@ -180,7 +181,7 @@ const toggleFast = async () => {
 };
 
 // Compute button text
-const startOrStop = computed(() => (startTime.value ? "Stop Fast" : "Start Fast"));
+const startOrStop = computed(() => (startTime.value ? "Stop" : "Start"));
 
 // Format times for display
 const formattedStartTime = computed(() =>
@@ -193,18 +194,22 @@ const formattedEndTime = computed(() =>
 </script>
 
 <template>
-  <div>
-    <h1>FastM8</h1>
-    <p>Welcome <b>{{ userName }}</b>!</p>
-    <div v-if="startTime">
-      <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
-      <p>Here is how far into your fasting window you are:</p>
-      <ProgressCircle :progress="progress" />
-      <p>Your scheduled fasting window closes on <strong>{{ formattedEndTime }}</strong></p>
-      <p>Fasting time that has elapsed: {{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
+  <div class="container">
+    <div class="left">
+      <h1>FastM8</h1>
+      <p>Welcome <b>{{ userName }}</b>!</p>
+      <div v-if="startTime">
+        <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
+        <p>Here is how far into your fasting window you are:</p>
+        <ProgressCircle :progress="progress" />
+        <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
+      </div>
     </div>
-    <button @click="toggleFast">{{ startOrStop }}</button>
-    <br />
-    <button @click="logout">Logout</button>
+    <div class="right">
+      <button class="circle" @click="toggleFast">{{ startOrStop }}</button>
+      <br />
+      <button class="circle" @click="logout">Logout</button>
+    </div>
   </div>
+  <Footer />
 </template>

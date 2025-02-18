@@ -11,7 +11,8 @@
   -moz-osx-font-smoothing: grayscale;
   --mint: #B2E4D8;
   --cool-mint: #B2D7E4;
-  --dark: #121421
+  --dark: #121421;
+  --coral: #e4b2be;
 }
 
 a {
@@ -60,17 +61,6 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-.card {
-  padding: 2em;
-}
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
 input {
   background-color: transparent;
   border-color: var(--mint);
@@ -87,15 +77,62 @@ form {
 .progress-text {
   color: white;
 }
-/* @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #c2c2c2;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+.container {
+  width: 100%;
+  max-width: 960px;
+  min-width: 320px;
+  border: solid;
+  display: flex;
+  flex-direction: row;
+}
+.left {
+  width: 70%;
+  border: solid red;
+  flex-wrap: wrap;
+  flex-direction: column;
+  display: inline;
+}
+.right {
+  width: 30%;
+  border: solid green;
+  flex-wrap: wrap;
+  height: auto;
+  display: inline;
+}
+.circle {
+  width: 75px !important;
+  height: 75px !important;
+  border-radius: 50%;
+  font-size: small;
+  padding: 0;
+  margin-top: 25px;
+  min-width: 0 !important;
+}
+.right .circle:first-of-type {
+  margin-top: 100px;
+}
+.footer {
+  min-height: 60px;
+  width: 100%;
+  border: solid blue;
+  flex-direction: row;
+  display: flex;
+  justify-content: space-between;
+}
+.footer svg {
+  width: 40px;
+  height: 40px;
+  margin: 10px 10px;
+  color: var(--mint);
+}
+
+.card {
+  padding: 2em;
+}
+
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}

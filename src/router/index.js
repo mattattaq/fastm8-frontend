@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Dashboard from "../pages/Dashboard.vue";
 import Login from "../pages/Login.vue";
-import Home from "../pages/Home.vue"; // This will handle the redirection logic
+import Home from "../pages/Home.vue";
+import Logs from "../pages/Logs.vue";
+import Settings from "../pages/Settings.vue";
 
 const isAuthenticated = () => {
   return localStorage.getItem("userToken") !== null; // Example authentication check
@@ -26,6 +28,28 @@ const routes = [
   {
     path: "/fastm8-frontend/dashboard",
     component: Dashboard,
+    beforeEnter: (to, from, next) => {
+      if (!isAuthenticated()) {
+        next("/fastm8-frontend/login");
+      } else {
+        next();
+      }
+    },
+  },
+  {
+    path: "/fastm8-frontend/settings",
+    component: Settings,
+    beforeEnter: (to, from, next) => {
+      if (!isAuthenticated()) {
+        next("/fastm8-frontend/login");
+      } else {
+        next();
+      }
+    },
+  },
+  {
+    path: "/fastm8-frontend/logs",
+    component: Logs,
     beforeEnter: (to, from, next) => {
       if (!isAuthenticated()) {
         next("/fastm8-frontend/login");
