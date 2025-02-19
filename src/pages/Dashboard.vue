@@ -15,18 +15,18 @@ const userId = localStorage.getItem("userId") || null;
 const userName = localStorage.getItem("userName");
 const fastLogId = localStorage.getItem("fastLogId") || null;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const isEditModalOpen = ref(false);
+const isConfirmModalOpen = ref(false);
+const isLoading = ref(false);
+const newStartTime = ref(null);
 const fastingEndTime = computed(() => {
   if (!startTime.value) return null;
   const end = new Date(startTime.value);
   end.setHours(end.getHours() + fastingWindow);
   return end;
 });
+let interval = null;
 
-// Logout function
-const logout = () => {
-  localStorage.clear(); // Clears all stored data, including userToken and userId
-  router.push("/fastm8-frontend/login"); // Redirect to login
-};
 
 // Fetch open logs when the dashboard loads
 const fetchOpenFastLogs = async () => {
@@ -82,8 +82,6 @@ const updateProgress = () => {
   progress.value = now >= fastingEndTime.value ? 100 : (elapsedDuration / totalDuration) * 100;
 };
 
-// Timer update every minute
-let interval = null;
 onMounted(() => {
   fetchOpenFastLogs();
   updateProgress();
@@ -112,96 +110,80 @@ const stopFast = async (logIds, edits, token) => {
   }
 }
 
+// Toggle Fast
 const toggleFast = async () => {
   if (!token || !userId) {
     console.error("No user token or ID found.");
     return;
   }
 
-  // Fetch open fasting logs for the user
-  const response = await fetch(`${API_BASE_URL}/api/open-logs?userId=${userId}`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (response.ok && data.length > 0) {
-    // If there's an open fast, complete it
-    const openLog = data[0]; // Get the first open log
-
-    // Check if we have the log id in localStorage, otherwise, we'll need to assign it.
-    if (!localStorage.getItem("fastLogId")) {
-      // Save the log id to localStorage
-      localStorage.setItem("fastLogId", openLog.id);
-    }
-
-    const endTime = new Date().toISOString();
-
-    // Update the existing log with an end time and mark it as complete
-    try {
-      const updateResponse = await fetch(`${API_BASE_URL}/api/logs`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userId,
-          id: openLog.id, // Use the id from localStorage or the open log
-          startTime: openLog.startTime, // Keep the original start time
-          endTime,
-          duration: (new Date(endTime) - new Date(openLog.startTime)) / 1000, // Calculate duration in seconds
-          isComplete: true,
-        }),
-      });
-
-      if (updateResponse.ok) {
-        startTime.value = null; // Clear the start time
-        progress.value = 0;
-        elapsedTime.value = { hours: 0, minutes: 0, seconds: 0 };
-        console.log("Fast stopped and logged successfully.");
-        localStorage.removeItem("fastLogId"); // Remove the log id after completing
-      } else {
-        console.error("Failed to update fast log.");
-      }
-    } catch (error) {
-      console.error("Error stopping fast:", error);
-    }
+  if (startTime.value) {
+    // If fasting is active, open edit modal
+    newStartTime.value = startTime.value.toISOString().slice(0, 16);
+    // turn on the confirm modal.
+    isEditModalOpen.value = true;
   } else {
-    // If no open fast exists, start a new fast log
-    startTime.value = new Date();
-
+    // Start a new fast
     try {
-      const createResponse = await fetch(`${API_BASE_URL}/api/logs`, {
+      const response = await fetch(`${API_BASE_URL}/api/logs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userId,
-          startTime: startTime.value.toISOString(),
-          endTime: "", // No end time yet
-          duration: 0, // Initial duration
-          isComplete: false,
-        }),
+        body: JSON.stringify({ userId, startTime: new Date().toISOString() }),
       });
 
-      const createData = await createResponse.json();
-
-      if (createResponse.ok) {
-        // Save the newly created log id to localStorage for future reference
-        localStorage.setItem("fastLogId", createData.id);
-        console.log("Fast started successfully.");
+      if (response.ok) {
+        console.log("New fast started.");
+        fetchOpenFastLogs(); // Refresh logs
       } else {
-        console.error("Failed to start fast log.");
+        console.error("Failed to start fast.");
       }
     } catch (error) {
       console.error("Error starting fast:", error);
     }
+  }
+};
+
+// update newStartTime with whatever the value is, turn off the isEditModalOpen and turn on isConfirmModalOpen
+const submitEdit = async () => {
+  isEditModalOpen.value = false;
+  isConfirmModalOpen.value = true;
+  newStartTime.value = document.querySelector('input[type="datetime-local"]').value;
+  console.log(newStartTime, " newStartTime");
+}
+// Confirm Edit Start Time
+const confirmEditStartTime = async () => {
+  if (!newStartTime.value) {
+    console.error("No new start time selected.");
+    return;
+  }
+
+  const selectedDate = new Date(newStartTime.value);
+  console.log("Selected Date:", selectedDate);
+
+  if (isNaN(selectedDate.getTime())) {
+    console.error("Invalid date format:", newStartTime.value);
+    return;
+  }
+
+  isLoading.value = true; // Show loading screen
+
+  try {
+    await editLogs(
+      [parseInt(fastLogId)], // Ensure fastLogId is an integer
+      [{ startTime: selectedDate.toISOString() }], // Convert to ISO format
+      token
+    );
+
+    console.log("Successfully updated fast log.");
+    isConfirmModalOpen.value = false;
+  } catch (error) {
+    console.error("Error updating fast log:", error);
+  } finally {
+    await fetchOpenFastLogs(); // Ensure this runs after the update
+    isLoading.value = false; // Hide loading screen
   }
 };
 
@@ -211,25 +193,46 @@ const toggleDisabled = computed(() => fastLogId && fastLogId > 0);
 
 // Format times for display
 const formattedStartTime = computed(() =>
-  startTime.value ? startTime.value.toLocaleString("en-US", { weekday: "long", hour: "numeric", minute: "2-digit", hour12: true }) : "Not started"
+  startTime.value ? startTime.value.toLocaleString("en-US", {
+    weekday: "long", hour: "numeric", minute: "2-digit", hour12: true
+  }) : "Not started"
 );
 
 const formattedEndTime = computed(() =>
-  fastingEndTime.value ? fastingEndTime.value.toLocaleString("en-US", { weekday: "long", hour: "numeric", minute: "2-digit", hour12: true }) : "N/A"
+  fastingEndTime.value ? fastingEndTime.value.toLocaleString("en-US", {
+    weekday: "long", hour: "numeric", minute: "2-digit", hour12: true
+  }) : "N/A"
 );
 </script>
 
 <template>
+  <!-- Edit Modal -->
+  <div v-if="isEditModalOpen" class="modal-overlay">
+    <div class="modal">
+      <h2>Edit Start Time</h2>
+      <input type="datetime-local" v-model="newStartTime" />
+      <button @click="submitEdit">OK</button>
+      <button @click="isEditModalOpen = false">Cancel</button>
+    </div>
+  </div>
+  <!-- Confirmation Modal -->
+  <div v-if="isConfirmModalOpen" class="modal-overlay" id="confirm">
+    <div class="modal">
+      <h2>Confirm Change</h2>
+      <p>Are you sure you want to update to {{ newStartTime }}?</p>
+      <button @click="confirmEditStartTime">Confirm</button>
+      <button @click="isConfirmModalOpen = false">Cancel</button>
+    </div>
+  </div>
   <div class="container">
     <div class="left">
       <h1>FastM8</h1>
       <p>Welcome <b>{{ userName }}</b>!</p>
       <div v-if="startTime">
         <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
-        <p>Here is how far into your fasting window you are:</p>
         <ProgressCircle :progress="progress" />
         <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
-        <p>Endtime: {{ formattedEndTime }}</p>
+        <p class="sub"><b>Endtime:</b> {{ formattedEndTime }}</p>
       </div>
     </div>
     <div class="right">
