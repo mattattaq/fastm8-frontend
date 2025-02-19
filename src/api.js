@@ -23,3 +23,27 @@ export const loginUser = async (email, password) => {
     throw error;
   }
 };
+
+export const editLogs = async (logIds, edits, token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/logs/edit`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ logIds, edits }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return data; // Return the data to the caller
+    } else {
+      throw new Error(data.error || "Failed to update logs.");
+    }
+  } catch (error) {
+    console.error("Error updating logs:", error);
+    throw error; // Throw the error to be handled by the caller
+  }
+};

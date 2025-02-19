@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import ProgressCircle from "../components/ProgressCircle.vue";
 import Footer from "../components/Footer.vue";
+import { editLogs } from '../api';
 
 const router = useRouter();
 const startTime = ref(null);
@@ -11,7 +12,8 @@ const progress = ref(0);
 const elapsedTime = ref({ hours: 0, minutes: 0, seconds: 0 });
 const token = localStorage.getItem("userToken") || null;
 const userId = localStorage.getItem("userId") || null;
-const userName = localStorage.getItem("userName")
+const userName = localStorage.getItem("userName");
+const fastLogId = localStorage.getItem("fastLogId") || null;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const fastingEndTime = computed(() => {
   if (!startTime.value) return null;
@@ -38,14 +40,19 @@ const fetchOpenFastLogs = async () => {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.log("Grabbing logs")
+    console.log("Grabbing logs");
+
     const data = await response.json();
-    console.log("data: ", data)
+    console.log("data: ", data);
+
     if (response.ok && data.length > 0) {
       // Check for the most recent log with no end time (open fast)
       const openLog = data.find(log => !log.endTime);
       console.log(openLog, "openLog");
+
+      // Save the log id to localStorage as an integer
       if (openLog) {
+        localStorage.setItem("fastLogId", openLog.id);  // Store as string but it's an integer
         startTime.value = new Date(openLog.startTime);
       }
     }
@@ -86,6 +93,24 @@ onMounted(() => {
 onUnmounted(() => {
   if (interval) clearInterval(interval);
 });
+
+const stopFast = async (logIds, edits, token) => {
+  if (toggleDisabled.value || fastLogId != null) {
+    console.log("Button is disabled or fastLogId is invalid.");
+    return;
+  }
+  console.log(logIds, "logIds");
+  console.log(edits, "edits");
+  try {
+    const data = await editLogs(logIds, edits, token); // Use the imported editLogs function
+    console.log(data.message);
+
+    // Reset fastLogId after successful update
+    localStorage.removeItem("fastLogId");
+  } catch (error) {
+    console.error("Error updating logs:", error);
+  }
+}
 
 const toggleFast = async () => {
   if (!token || !userId) {
@@ -181,7 +206,8 @@ const toggleFast = async () => {
 };
 
 // Compute button text
-const startOrStop = computed(() => (startTime.value ? "Stop" : "Start"));
+const startOrEdit = computed(() => (startTime.value ? "Edit" : "Start"));
+const toggleDisabled = computed(() => fastLogId && fastLogId > 0);
 
 // Format times for display
 const formattedStartTime = computed(() =>
@@ -203,12 +229,16 @@ const formattedEndTime = computed(() =>
         <p>Here is how far into your fasting window you are:</p>
         <ProgressCircle :progress="progress" />
         <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
+        <p>Endtime: {{ formattedEndTime }}</p>
       </div>
     </div>
     <div class="right">
-      <button class="circle" @click="toggleFast">{{ startOrStop }}</button>
+      <button class="circle" @click="toggleFast">{{ startOrEdit }}</button>
       <br />
-      <button class="circle" @click="logout">Logout</button>
+      <button :class="['circle', { disabled: toggleDisabled }]"
+        @click="stopFast([fastLogId], [{ endTime: new Date().toDateString, isComplete: true }])">
+        Stop
+      </button>
     </div>
   </div>
   <Footer />

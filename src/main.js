@@ -7,12 +7,13 @@ import {
   faHouse,
   faList,
   faCircleUser,
+  faRightToBracket,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./style.css";
 import "./registerServiceWorker";
 
-library.add(faHouse, faList, faCircleUser);
+library.add(faHouse, faList, faCircleUser, faRightToBracket);
 const app = createApp(App);
 app.component("font-awesome-icon", FontAwesomeIcon);
 app.use(router);

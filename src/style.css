@@ -108,6 +108,10 @@ form {
   margin-top: 25px;
   min-width: 0 !important;
 }
+.circle.disabled {
+  background-color: var(--coral);
+  font-size: bold;
+}
 .right .circle:first-of-type {
   margin-top: 100px;
 }

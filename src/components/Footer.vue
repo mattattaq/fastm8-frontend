@@ -9,5 +9,8 @@
         <router-link to="/fastm8-frontend/settings">
             <font-awesome-icon :icon="['fas', 'circle-user']" />
         </router-link>
+        <router-link to="/fastm8-frontend/login">
+            <font-awesome-icon :icon="['fas', 'right-to-bracket']" />
+        </router-link>
     </div>
 </template>
