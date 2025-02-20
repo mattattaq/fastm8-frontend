@@ -93,7 +93,8 @@ onUnmounted(() => {
 });
 
 const stopFast = async (logIds, edits, token) => {
-  if (toggleDisabled.value || fastLogId != null) {
+  console.log(toggleDisabled.value);
+  if (toggleDisabled.value) {
     console.log("Button is disabled or fastLogId is invalid.");
     return;
   }
@@ -105,6 +106,7 @@ const stopFast = async (logIds, edits, token) => {
 
     // Reset fastLogId after successful update
     localStorage.removeItem("fastLogId");
+    fetchOpenFastLogs(); // Refresh logs
   } catch (error) {
     console.error("Error updating logs:", error);
   }
@@ -189,7 +191,7 @@ const confirmEditStartTime = async () => {
 
 // Compute button text
 const startOrEdit = computed(() => (startTime.value ? "Edit" : "Start"));
-const toggleDisabled = computed(() => fastLogId && fastLogId > 0);
+const toggleDisabled = computed(() => typeof (fastLogId) !== null);
 
 // Format times for display
 const formattedStartTime = computed(() =>
