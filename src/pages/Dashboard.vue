@@ -126,6 +126,7 @@ const toggleFast = async () => {
     isEditModalOpen.value = true;
   } else {
     // Start a new fast
+    console.log("new log");
     try {
       const response = await fetch(`${API_BASE_URL}/api/logs`, {
         method: "POST",
@@ -133,7 +134,7 @@ const toggleFast = async () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId, startTime: new Date().toISOString() }),
+        body: JSON.stringify({ userId, startTime: new Date().toISOString(), isComplete: false }),
       });
 
       if (response.ok) {
