@@ -1,8 +1,10 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import Footer from "../components/Footer.vue";
 import DateRangeModal from "../components/DateRangeModal.vue";
+import EditLogModal from "../components/EditLogModal.vue";
+import WeeklyFastingSummary from "../components/WeeklyFastingSummary.vue";
 
 const router = useRouter();
 const token = localStorage.getItem("userToken") || null;
@@ -10,12 +12,23 @@ const userId = localStorage.getItem("userId") || null;
 const userName = localStorage.getItem("userName");
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const logs = ref([]);
-const selectedDuration = ref("Select date range");
+const selectedDuration = ref("Last 7 Days");
 const startDate = ref(null);
 const endDate = ref(null);
 const isLoading = ref(false);
 const error = ref(null);
 const showDateModal = ref(false);
+const showEditModal = ref(false);
+const selectedLog = ref(null);
+const fastingSettings = ref({
+  protocol: '16:8',
+  fastingHours: 16,
+  eatingHours: 8
+});
+
+const activeFasts = computed(() => {
+  return logs.value.filter(log => !log.endTime).length;
+});
 
 // Logout function
 const logout = () => {
@@ -68,15 +81,79 @@ const handleDurationChange = (range) => {
   fetchLogs();
 };
 
-const formatDateRange = (start, end) => {
-  if (!start || !end) return "Select date range";
-  const startFormatted = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const endFormatted = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return `${startFormatted} - ${endFormatted}`;
+const calculateFastingTime = (startTime, endTime) => {
+  if (!startTime) return null;
+  if (!endTime) return 'In Progress';
+
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const diffMs = end - start;
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return 'Active';
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+const handleEdit = (log) => {
+  selectedLog.value = log;
+  showEditModal.value = true;
+};
+
+const saveEdit = async (editData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/logs/edit`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(editData)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update log');
+    }
+
+    // Refresh logs after successful edit
+    await fetchLogs();
+  } catch (err) {
+    console.error('Error updating log:', err);
+    error.value = err.message;
+  }
 };
 
 onMounted(() => {
   if (userId) {
+    // Load fasting settings
+    const savedSettings = localStorage.getItem('fastingSettings');
+    if (savedSettings) {
+      fastingSettings.value = JSON.parse(savedSettings);
+    }
+
+    // Set initial date range to last 7 days
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6); // 6 days ago to include today
+
+    startDate.value = sevenDaysAgo;
+    endDate.value = today;
+
     fetchLogs();
   }
 });
@@ -90,21 +167,37 @@ onUnmounted(() => {
     <h1>FastM8</h1>
     <p class="welcome">Welcome <b>{{ userName }}</b>!</p>
     <div class="controls">
-      <p>Select date range for logs</p>
-      <button class="date-select-button" @click="showDateModal = true">
-        {{ selectedDuration }}
-      </button>
+      <div class="controls-row">
+        <p>Select date range for logs</p>
+        <button class="date-select-button" @click="showDateModal = true">
+          {{ selectedDuration }}
+        </button>
+      </div>
+      <div class="controls-row">
+        <p>Current Protocol: {{ fastingSettings.protocol }}</p>
+      </div>
     </div>
 
     <div class="container">
       <div v-if="isLoading" class="loading">Loading logs...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else-if="logs.length === 0" class="no-logs">No logs found for the selected period</div>
-      <div v-else id="log-wrapper">
-        <div v-for="(log, index) in logs" :key="index" class="log">
-          <p>Start Time: <span class="highlight">{{ log.startTime }}</span></p>
-          <p>End Time: <span class="highlight">{{ log.endTime }}</span></p>
-          <p>Total Fasting Time: <span class="highlight">{{ log.totalTime }}</span></p>
+      <div v-else>
+        <WeeklyFastingSummary :logs="logs" :target-hours="fastingSettings.fastingHours" />
+        <div id="log-wrapper">
+          <div v-for="(log, index) in logs" :key="index"
+            :class="['log', { 'active': !log.endTime, 'completed': log.endTime }]">
+            <div class="log-header">
+              <span class="status-badge" :class="{ 'active': !log.endTime, 'completed': log.endTime }">
+                {{ !log.endTime ? 'Active' : 'Completed' }}
+              </span>
+              <button class="edit-button" @click="handleEdit(log)">Edit</button>
+            </div>
+            <p>Start Time: <span class="highlight">{{ formatDateTime(log.startTime) }}</span></p>
+            <p>End Time: <span class="highlight">{{ formatDateTime(log.endTime) }}</span></p>
+            <p>Total Fasting Time: <span class="highlight-time">{{ calculateFastingTime(log.startTime, log.endTime)
+                }}</span></p>
+          </div>
         </div>
       </div>
     </div>
@@ -112,6 +205,8 @@ onUnmounted(() => {
 
     <DateRangeModal v-model:show="showDateModal" v-model:selectedRange="selectedDuration" v-model:startDate="startDate"
       v-model:endDate="endDate" @update:selectedRange="handleDurationChange" />
+
+    <EditLogModal v-model:show="showEditModal" :log="selectedLog" @save="saveEdit" />
   </div>
 </template>
 
@@ -120,10 +215,13 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 #log-wrapper {
-  width: 100%;
+  width: auto;
   height: 60vh;
   border: 2px solid var(--mint);
   border-radius: 8px;
@@ -131,6 +229,7 @@ onUnmounted(() => {
   overflow-y: auto;
   padding: 16px;
   background: var(--lite-dark);
+  margin-top: 8px;
 }
 
 h1 {
@@ -140,12 +239,12 @@ h1 {
 }
 
 .welcome {
-  margin-bottom: 24px;
   font-size: 1.1em;
 }
 
-.controls {
-  margin-bottom: 24px;
+
+.controls-row {
+  margin-bottom: 8px;
 }
 
 .date-select-button {
@@ -170,20 +269,62 @@ h1 {
   width: calc(100% - 24px);
   background: rgba(255, 255, 255, 0.05);
   min-height: 50px;
-  margin: 12px 0;
+  margin: 8px 0;
   text-align: left;
   padding: 12px;
   border-radius: 8px;
   transition: transform 0.2s ease;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .log:hover {
   transform: translateX(4px);
 }
 
+.log.active {
+  border-left: 4px solid var(--mint);
+  background: rgba(0, 255, 200, 0.05);
+}
+
+.log.completed {
+  border-left: 4px solid var(--green);
+  background: rgba(0, 255, 0, 0.05);
+}
+
+.log-header {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.status-badge.active {
+  background: rgba(0, 255, 200, 0.2);
+  color: var(--mint);
+}
+
+.status-badge.completed {
+  background: rgba(0, 255, 0, 0.2);
+  color: var(--green);
+}
+
 .highlight {
   font-weight: bold;
   color: var(--green);
+  float: right;
+}
+
+.highlight-time {
+  font-weight: bold;
+  color: #ff6b35;
   float: right;
 }
 
@@ -215,5 +356,34 @@ h1 {
 
 #log-wrapper::-webkit-scrollbar-thumb:hover {
   background: var(--green);
+}
+
+.edit-button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--mint);
+  color: var(--mint);
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: all 0.2s ease;
+  min-width: 60px;
+  text-align: center;
+}
+
+.edit-button:hover {
+  background: rgba(0, 255, 200, 0.1);
+}
+
+.container {
+  flex: 1;
+  margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Add spacing between WeeklyFastingSummary and log wrapper */
+.WeeklyFastingSummary {
+  margin-bottom: 16px;
 }
 </style>

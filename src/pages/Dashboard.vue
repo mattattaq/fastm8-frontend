@@ -27,6 +27,49 @@ const fastingEndTime = computed(() => {
 });
 let interval = null;
 
+const fastingSettings = ref({
+  protocol: '16:8',
+  fastingHours: 16,
+  eatingHours: 8
+});
+
+// Add computed properties for recommended windows
+const recommendedWindows = computed(() => {
+  const now = new Date();
+  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
+
+  // Calculate recommended eating window
+  const eatingStart = new Date(now);
+  eatingStart.setHours(now.getHours() - settings.fastingHours);
+
+  const eatingEnd = new Date(eatingStart);
+  eatingEnd.setHours(eatingStart.getHours() + settings.eatingHours);
+
+  // Calculate next fasting window
+  const nextFastStart = new Date(eatingEnd);
+  const nextFastEnd = new Date(nextFastStart);
+  nextFastEnd.setHours(nextFastStart.getHours() + settings.fastingHours);
+
+  return {
+    eatingWindow: {
+      start: eatingStart,
+      end: eatingEnd
+    },
+    nextFast: {
+      start: nextFastStart,
+      end: nextFastEnd
+    }
+  };
+});
+
+// Add format time helper
+const formatTime = (date) => {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
 
 // Fetch open logs when the dashboard loads
 const fetchOpenFastLogs = async () => {
@@ -206,6 +249,46 @@ const formattedEndTime = computed(() =>
     weekday: "long", hour: "numeric", minute: "2-digit", hour12: true
   }) : "N/A"
 );
+
+// Add time remaining calculation
+const calculateTimeRemaining = () => {
+  if (!startTime.value || !fastingEndTime.value) return '';
+
+  const now = new Date();
+  const end = new Date(fastingEndTime.value);
+  const diffMs = end - now;
+
+  if (diffMs <= 0) return 'Fast Complete!';
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  return `${hours}h ${minutes}m`;
+};
+
+// Add motivational messages based on fasting progress
+const motivationalMessage = computed(() => {
+  if (!startTime.value) return null;
+
+  const progress = (elapsedTime.value.hours / fastingSettings.value.fastingHours) * 100;
+
+  if (progress < 25) return "You've got this! The first few hours are the hardest.";
+  if (progress < 50) return "Great job! Your body is starting to burn fat.";
+  if (progress < 75) return "Almost there! You're in the fat-burning zone.";
+  if (progress < 100) return "Final stretch! You're doing amazing!";
+  return "Congratulations! You've completed your fast!";
+});
+
+// Add fasting phase indicator
+const fastingPhase = computed(() => {
+  if (!startTime.value) return null;
+
+  const hours = elapsedTime.value.hours;
+  if (hours < 12) return "Early Fasting Phase";
+  if (hours < 16) return "Fat Burning Phase";
+  if (hours < 20) return "Deep Ketosis Phase";
+  return "Autophagy Phase";
+});
 </script>
 
 <template>
@@ -229,23 +312,261 @@ const formattedEndTime = computed(() =>
   </div>
   <div class="container">
     <div class="left">
-      <h1>FastM8</h1>
-      <p>Welcome <b>{{ userName }}</b>!</p>
-      <div v-if="startTime">
-        <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
-        <ProgressCircle :progress="progress" />
-        <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
-        <p class="sub"><b>Endtime:</b> {{ formattedEndTime }}</p>
+      <div class="header">
+        <h1>FastM8</h1>
+        <div class="protocol-label">
+          {{ fastingSettings.protocol }}
+        </div>
       </div>
-    </div>
-    <div class="right">
-      <button class="circle" @click="toggleFast">{{ startOrEdit }}</button>
-      <br />
-      <button :class="['circle', { disabled: toggleDisabled }]"
-        @click="stopFast([fastLogId], [{ endTime: new Date().toDateString, isComplete: true }])">
-        Stop
-      </button>
+      <p>Welcome <b>{{ userName }}</b>!</p>
+
+      <!-- Recommended windows section -->
+      <div class="recommended-windows" v-if="!startTime">
+        <h3>Recommended Windows</h3>
+        <div class="window-info">
+          <div class="window-section">
+            <h4>Current Eating Window</h4>
+            <p class="time-range">
+              {{ formatTime(recommendedWindows.eatingWindow.start) }} -
+              {{ formatTime(recommendedWindows.eatingWindow.end) }}
+            </p>
+            <p class="window-duration">{{ fastingSettings.eatingHours }} hours</p>
+            <p class="window-tip">Make sure to eat nutrient-dense foods during this window</p>
+          </div>
+          <div class="window-section">
+            <h4>Next Fasting Window</h4>
+            <p class="time-range">
+              {{ formatTime(recommendedWindows.nextFast.start) }} -
+              {{ formatTime(recommendedWindows.nextFast.end) }}
+            </p>
+            <p class="window-duration">{{ fastingSettings.fastingHours }} hours</p>
+            <p class="window-tip">Stay hydrated and keep busy during your fast</p>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="start-button" @click="toggleFast">Start Fast</button>
+        </div>
+      </div>
+
+      <!-- Active fast section -->
+      <div v-if="startTime" class="active-fast">
+        <div class="fast-status">
+          <h3>Current Fast</h3>
+          <div class="phase-indicator">
+            <span class="phase-badge">{{ fastingPhase }}</span>
+          </div>
+          <p>Started: <strong>{{ formattedStartTime }}</strong></p>
+          <p>Ends: <strong>{{ formattedEndTime }}</strong></p>
+        </div>
+        <ProgressCircle :progress="progress" />
+        <div class="elapsed-time">
+          <p class="timer">{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
+          <p class="time-remaining">Time Remaining: {{ calculateTimeRemaining() }}</p>
+          <p class="motivational-message">{{ motivationalMessage }}</p>
+        </div>
+        <div class="action-buttons">
+          <button class="edit-button" @click="toggleFast">Edit</button>
+          <button class="stop-button" :class="{ disabled: toggleDisabled }"
+            @click="stopFast([fastLogId], [{ endTime: new Date().toDateString, isComplete: true }])">
+            End Fast
+          </button>
+        </div>
+      </div>
     </div>
   </div>
   <Footer />
 </template>
+
+<style>
+/* ... existing styles ... */
+
+.recommended-windows {
+  background: rgba(0, 255, 200, 0.05);
+  border: 1px solid var(--mint);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.window-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(0, 255, 200, 0.03);
+  border-radius: 8px;
+}
+
+.window-section h4 {
+  color: var(--mint);
+  margin: 0 0 12px 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.time-range {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: var(--green);
+  margin: 8px 0;
+}
+
+.window-duration {
+  color: var(--mint);
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.start-button,
+.edit-button,
+.stop-button {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--mint);
+  background: var(--mint);
+  color: var(--lite-dark);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9em;
+  text-align: center;
+  min-width: 0;
+  /* Allow flex items to shrink below their content size */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.start-button:hover,
+.edit-button:hover {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.stop-button {
+  background: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+.stop-button:hover {
+  background: #ff5252;
+  border-color: #ff5252;
+}
+
+.stop-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.active-fast {
+  background: rgba(0, 255, 200, 0.05);
+  border: 1px solid var(--mint);
+  border-radius: 8px;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fast-status {
+  margin-bottom: 20px;
+}
+
+.fast-status h3 {
+  color: var(--mint);
+  margin: 0 0 16px 0;
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.elapsed-time {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.timer {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--mint);
+  margin: 0;
+}
+
+.time-remaining {
+  color: var(--mint);
+  opacity: 0.8;
+  margin-top: 8px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.protocol-label {
+  background: rgba(0, 255, 200, 0.1);
+  border: 1px solid var(--mint);
+  color: var(--mint);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.window-tip {
+  color: var(--mint);
+  opacity: 0.7;
+  font-size: 0.9em;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.phase-indicator {
+  margin: 12px 0;
+}
+
+.phase-badge {
+  background: rgba(0, 255, 200, 0.1);
+  border: 1px solid var(--mint);
+  color: var(--mint);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.motivational-message {
+  color: var(--mint);
+  font-style: italic;
+  margin-top: 16px;
+  font-size: 1.1em;
+  text-align: center;
+}
+
+/* ... rest of existing styles ... */
+
+/* Update container styles to ensure proper width constraints */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  width: 100%;
+}
+
+.left {
+  width: 100%;
+}
+
+.recommended-windows,
+.active-fast {
+  width: 100%;
+  box-sizing: border-box;
+}
+</style>
