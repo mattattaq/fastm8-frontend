@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import ProgressCircle from "../components/ProgressCircle.vue";
 import Footer from "../components/Footer.vue";
 import { editLogs } from '../api';
+import { useSettings } from '../stores/settings';
 
 const router = useRouter();
 const startTime = ref(null);
@@ -19,6 +20,10 @@ const isEditModalOpen = ref(false);
 const isConfirmModalOpen = ref(false);
 const isLoading = ref(false);
 const newStartTime = ref(null);
+const logs = ref([]);
+
+const { settings: fastingSettings } = useSettings();
+
 const fastingEndTime = computed(() => {
   if (!startTime.value) return null;
   const end = new Date(startTime.value);
@@ -26,25 +31,56 @@ const fastingEndTime = computed(() => {
   return end;
 });
 let interval = null;
-
-const fastingSettings = ref({
-  protocol: '16:8',
-  fastingHours: 16,
-  eatingHours: 8,
-  use24HourFormat: false
-});
+const alternatingText = ref("M");
+let typingInterval = null;
 
 // Add computed properties for recommended windows
 const recommendedWindows = computed(() => {
   const now = new Date();
-  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
+  const settings = fastingSettings.value;
 
-  // Calculate recommended eating window
-  const eatingStart = new Date(now);
-  eatingStart.setHours(now.getHours() - settings.fastingHours);
+  // Ensure preferredEatingWindow exists with default values
+  const preferredWindow = settings.preferredEatingWindow || {
+    startHour: 8,
+    startMinute: 0
+  };
 
-  const eatingEnd = new Date(eatingStart);
-  eatingEnd.setHours(eatingStart.getHours() + settings.eatingHours);
+  // Get the most recent completed fast from logs
+  const recentFast = logs.value
+    .filter(log => log.endTime)
+    .sort((a, b) => new Date(b.endTime) - new Date(a.endTime))[0];
+
+  let eatingStart, eatingEnd;
+
+  if (recentFast && (now - new Date(recentFast.endTime)) < 24 * 60 * 60 * 1000) {
+    // If there's a recent fast (within 24 hours), base the eating window on its end time
+    const endTime = new Date(recentFast.endTime);
+    eatingStart = new Date(endTime);
+
+    // If the end time is in the past, use now as the start time
+    if (eatingStart < now) {
+      eatingStart = new Date(now);
+    }
+
+    eatingEnd = new Date(eatingStart);
+    eatingEnd.setHours(eatingStart.getHours() + settings.eatingHours);
+  } else {
+    // Otherwise, use the preferred eating window from settings
+    eatingStart = new Date(now);
+    eatingEnd = new Date(now);
+
+    // Set to preferred start time
+    eatingStart.setHours(preferredWindow.startHour, preferredWindow.startMinute, 0, 0);
+
+    // If preferred start time has passed today, set for today
+    if (eatingStart < now) {
+      eatingStart = new Date(now);
+    }
+
+    // Set end time based on eating hours
+    eatingEnd = new Date(eatingStart);
+    eatingEnd.setHours(eatingStart.getHours() + settings.eatingHours);
+  }
 
   // Calculate next fasting window
   const nextFastStart = new Date(eatingEnd);
@@ -65,11 +101,11 @@ const recommendedWindows = computed(() => {
 
 // Add format time helper
 const formatTime = (date) => {
-  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
-  return date.toLocaleTimeString('en-US', {
+  return date.toLocaleString('en-US', {
+    weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: !settings.use24HourFormat
+    hour12: !fastingSettings.value.use24HourFormat
   });
 };
 
@@ -106,6 +142,27 @@ const fetchOpenFastLogs = async () => {
   }
 };
 
+// Add fetch logs function
+const fetchLogs = async () => {
+  if (!token || !userId) {
+    console.error("No user token or ID found.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/logs?userId=${userId}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      logs.value = data;
+    }
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+  }
+};
 
 // Update progress & elapsed time
 const updateProgress = () => {
@@ -129,33 +186,51 @@ const updateProgress = () => {
 
 onMounted(() => {
   fetchOpenFastLogs();
+  fetchLogs();
   updateProgress();
   interval = setInterval(updateProgress, 1000);
+  startAlternating();
 });
 
 onUnmounted(() => {
   if (interval) clearInterval(interval);
+  if (typingInterval) clearInterval(typingInterval);
 });
 
-const stopFast = async (logIds, edits, token) => {
-  console.log(toggleDisabled.value);
-  if (toggleDisabled.value) {
-    console.log("Button is disabled or fastLogId is invalid.");
+const stopFast = async () => {
+  if (!startTime.value) {
+    console.log("No active fast to end");
     return;
   }
-  console.log(logIds, "logIds");
-  console.log(edits, "edits");
-  try {
-    const data = await editLogs(logIds, edits, token); // Use the imported editLogs function
-    console.log(data.message);
 
-    // Reset fastLogId after successful update
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/logs/edit`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        logIds: [parseInt(fastLogId)],
+        edits: [{
+          endTime: new Date().toISOString(),
+          isComplete: true
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to end fast');
+    }
+
+    // Reset fastLogId and startTime after successful update
     localStorage.removeItem("fastLogId");
-    fetchOpenFastLogs(); // Refresh logs
+    startTime.value = null;
+    await fetchOpenFastLogs();
   } catch (error) {
-    console.error("Error updating logs:", error);
+    console.error("Error ending fast:", error);
   }
-}
+};
 
 // Toggle Fast
 const toggleFast = async () => {
@@ -237,28 +312,26 @@ const confirmEditStartTime = async () => {
 
 // Compute button text
 const startOrEdit = computed(() => (startTime.value ? "Edit" : "Start"));
-const toggleDisabled = computed(() => typeof (fastLogId) !== null);
+const toggleDisabled = computed(() => !startTime.value);
 
 // Format times for display
 const formattedStartTime = computed(() => {
   if (!startTime.value) return "Not started";
-  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
   return startTime.value.toLocaleString("en-US", {
     weekday: "long",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: !settings.use24HourFormat
+    hour12: !fastingSettings.value.use24HourFormat
   });
 });
 
 const formattedEndTime = computed(() => {
   if (!fastingEndTime.value) return "N/A";
-  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
   return fastingEndTime.value.toLocaleString("en-US", {
     weekday: "long",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: !settings.use24HourFormat
+    hour12: !fastingSettings.value.use24HourFormat
   });
 });
 
@@ -301,6 +374,24 @@ const fastingPhase = computed(() => {
   if (hours < 20) return "Deep Ketosis Phase";
   return "Autophagy Phase";
 });
+
+// Start alternating the "M" effect
+const startAlternating = () => {
+  if (!typingInterval) {
+    typingInterval = setInterval(() => {
+      alternatingText.value = alternatingText.value === "M" ? "^" : "M";
+    }, 500);
+  }
+};
+
+// Stop alternating and reset text
+const stopAlternating = () => {
+  if (typingInterval) {
+    clearInterval(typingInterval);
+    typingInterval = null;
+  }
+  alternatingText.value = "M";
+};
 </script>
 
 <template>
@@ -333,7 +424,7 @@ const fastingPhase = computed(() => {
   <div class="container">
     <div class="left">
       <div class="header">
-        <h1>FastM8</h1>
+        <h1>Fast{{ alternatingText }}8</h1>
         <div class="protocol-label">
           {{ fastingSettings.protocol }}
         </div>
@@ -346,7 +437,7 @@ const fastingPhase = computed(() => {
         <div class="window-info">
           <div class="window-section">
             <h4>Current Eating Window</h4>
-            <p class="time-range">
+            <p class="time-range eating">
               {{ formatTime(recommendedWindows.eatingWindow.start) }} -
               {{ formatTime(recommendedWindows.eatingWindow.end) }}
             </p>
@@ -355,7 +446,7 @@ const fastingPhase = computed(() => {
           </div>
           <div class="window-section">
             <h4>Next Fasting Window</h4>
-            <p class="time-range">
+            <p class="time-range fasting">
               {{ formatTime(recommendedWindows.nextFast.start) }} -
               {{ formatTime(recommendedWindows.nextFast.end) }}
             </p>
@@ -386,8 +477,7 @@ const fastingPhase = computed(() => {
         </div>
         <div class="action-buttons">
           <button class="edit-button" @click="toggleFast">Edit</button>
-          <button class="stop-button" :class="{ disabled: toggleDisabled }"
-            @click="stopFast([fastLogId], [{ endTime: new Date().toDateString, isComplete: true }])">
+          <button class="stop-button" :class="{ disabled: toggleDisabled }" @click="stopFast">
             End Fast
           </button>
         </div>
@@ -401,17 +491,21 @@ const fastingPhase = computed(() => {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: calc(100vh - 100px);
+  background: linear-gradient(135deg, var(--dark) 0%, #1a1f2e 100%);
+  box-sizing: border-box;
 }
 
 .left {
   width: 100%;
   max-width: 500px;
   text-align: center;
+  box-sizing: border-box;
+  padding: 0 16px;
 }
 
 .header {
@@ -419,12 +513,20 @@ const fastingPhase = computed(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  flex-wrap: nowrap;
+  gap: 12px;
 }
 
 h1 {
   color: var(--mint);
   margin: 0;
-  font-size: 2em;
+  font-size: clamp(1.5em, 5vw, 2em);
+  transition: transform 0.3s ease-in-out;
+  white-space: nowrap;
+}
+
+h1:hover {
+  transform: scale(1.05);
 }
 
 .protocol-label {
@@ -433,43 +535,113 @@ h1 {
   color: var(--mint);
   padding: 8px 16px;
   border-radius: 20px;
-  font-size: 0.9em;
+  font-size: clamp(0.8em, 3vw, 0.9em);
   font-weight: 600;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .welcome {
   color: var(--mint);
   margin-bottom: 24px;
+  font-size: clamp(1em, 4vw, 1.1em);
 }
 
 .recommended-windows {
   background: rgba(0, 255, 200, 0.05);
   border: 1px solid var(--mint);
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px;
   margin-bottom: 20px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.window-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .window-section {
-  margin-bottom: 20px;
-  padding: 16px;
+  margin-bottom: 0;
+  padding: 12px;
   background: rgba(0, 255, 200, 0.03);
   border-radius: 8px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.window-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 255, 200, 0.1);
 }
 
 .window-section h4 {
   color: var(--mint);
   margin: 0 0 12px 0;
-  font-size: 1.1em;
+  font-size: clamp(1em, 4vw, 1.1em);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .time-range {
-  font-size: 1.2em;
+  font-size: clamp(0.9em, 3.5vw, 1.2em);
   font-weight: bold;
   color: var(--green);
   margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.time-range.eating::before {
+  content: "🍽️";
+  font-size: 1.4em;
+  animation: eat 0.5s ease-in-out infinite;
+}
+
+.time-range.fasting::before {
+  content: "⏳";
+  font-size: 1.4em;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes eat {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .window-duration {
@@ -483,6 +655,7 @@ h1 {
   gap: 12px;
   margin-top: 20px;
   width: 100%;
+  flex-wrap: nowrap;
 }
 
 .start-button,
@@ -497,7 +670,7 @@ h1 {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 0.9em;
+  font-size: clamp(0.8em, 3vw, 0.9em);
   text-align: center;
   min-width: 0;
   white-space: nowrap;
@@ -552,24 +725,29 @@ h1 {
 }
 
 .timer {
-  font-size: 2em;
+  font-size: clamp(1.5em, 8vw, 2em);
   font-weight: bold;
   color: var(--mint);
   margin: 0;
+  white-space: nowrap;
 }
 
 .time-remaining {
   color: var(--mint);
   opacity: 0.8;
   margin-top: 8px;
+  font-size: clamp(0.9em, 3vw, 1em);
+  white-space: nowrap;
 }
 
 .window-tip {
   color: var(--mint);
   opacity: 0.7;
-  font-size: 0.9em;
+  font-size: clamp(0.8em, 3vw, 0.9em);
   margin-top: 8px;
   font-style: italic;
+  padding: 0 4px;
+  box-sizing: border-box;
 }
 
 .phase-indicator {
@@ -582,16 +760,18 @@ h1 {
   color: var(--mint);
   padding: 6px 12px;
   border-radius: 16px;
-  font-size: 0.9em;
+  font-size: clamp(0.8em, 3vw, 0.9em);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .motivational-message {
   color: var(--mint);
   font-style: italic;
   margin-top: 16px;
-  font-size: 1.1em;
+  font-size: clamp(0.9em, 3vw, 1.1em);
   text-align: center;
+  padding: 0 12px;
 }
 
 /* Modal styles */
@@ -610,18 +790,19 @@ h1 {
 
 .modal {
   background: var(--lite-dark);
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
   border-radius: 12px;
   border: 2px solid var(--mint);
   width: 90%;
   max-width: 400px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin: 0 12px;
 }
 
 .modal h2 {
   color: var(--mint);
   margin: 0 0 20px 0;
-  font-size: 1.4em;
+  font-size: clamp(1.2em, 5vw, 1.4em);
   text-align: center;
 }
 
@@ -633,7 +814,7 @@ h1 {
   border-radius: 8px;
   background: rgba(0, 255, 200, 0.05);
   color: var(--mint);
-  font-size: 1em;
+  font-size: clamp(0.9em, 3vw, 1em);
 }
 
 .modal input[type="datetime-local"]::-webkit-calendar-picker-indicator {
@@ -712,8 +893,8 @@ h1 {
   border: 4px solid rgba(0, 255, 200, 0.1);
   border-top: 4px solid var(--mint);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: clamp(30px, 10vw, 40px);
+  height: clamp(30px, 10vw, 40px);
   animation: spin 1s linear infinite;
 }
 
@@ -724,6 +905,42 @@ h1 {
 
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/* Media query for small screens */
+@media (max-width: 375px) {
+  .left {
+    padding: 0 12px;
+  }
+
+  .recommended-windows {
+    padding: 12px;
+  }
+
+  .window-section {
+    padding: 10px;
+  }
+
+  .time-range {
+    font-size: 0.9em;
+    padding: 0 2px;
+  }
+
+  .window-tip {
+    font-size: 0.8em;
+    padding: 0 2px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .start-button,
+  .edit-button,
+  .stop-button {
+    width: 100%;
   }
 }
 </style>
