@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import Footer from "../components/Footer.vue";
 
@@ -12,7 +12,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const fastingSettings = ref({
   protocol: '16:8',
   fastingHours: 16,
-  eatingHours: 8
+  eatingHours: 8,
+  use24HourFormat: false
 });
 
 const protocols = [
@@ -56,7 +57,8 @@ const saveSettings = () => {
   const settings = {
     protocol: selectedProtocol.value,
     fastingHours: selectedProtocol.value === 'custom' ? customFastingHours.value : parseInt(selectedProtocol.value.split(':')[0]),
-    eatingHours: selectedProtocol.value === 'custom' ? customEatingHours.value : parseInt(selectedProtocol.value.split(':')[1])
+    eatingHours: selectedProtocol.value === 'custom' ? customEatingHours.value : parseInt(selectedProtocol.value.split(':')[1]),
+    use24HourFormat: fastingSettings.value.use24HourFormat
   };
   fastingSettings.value = settings;
   localStorage.setItem('fastingSettings', JSON.stringify(settings));
@@ -85,6 +87,34 @@ onMounted(() => {
 onUnmounted(() => {
 });
 
+// Update format time helper
+const formatTime = (date) => {
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: !fastingSettings.value.use24HourFormat
+  });
+};
+
+// Update formatted times
+const formattedStartTime = computed(() =>
+  startTime.value ? startTime.value.toLocaleString("en-US", {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: !fastingSettings.value.use24HourFormat
+  }) : "Not started"
+);
+
+const formattedEndTime = computed(() =>
+  fastingEndTime.value ? fastingEndTime.value.toLocaleString("en-US", {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: !fastingSettings.value.use24HourFormat
+  }) : "N/A"
+);
+
 </script>
 
 <template>
@@ -101,6 +131,13 @@ onUnmounted(() => {
             {{ protocol.label }}
           </option>
         </select>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="fastingSettings.use24HourFormat" class="checkbox-input">
+          Use 24-hour time format
+        </label>
       </div>
 
       <div class="protocol-info">
@@ -274,5 +311,51 @@ label {
 
 .benefits li::before {
   display: none;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--mint);
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  background: var(--lite-dark);
+  border: 1px solid var(--mint);
+  border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.checkbox-input:checked {
+  background: var(--mint);
+  border-color: var(--mint);
+}
+
+.checkbox-input:checked::after {
+  content: '✓';
+  position: absolute;
+  color: var(--lite-dark);
+  font-size: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.checkbox-input:hover {
+  background: rgba(0, 255, 200, 0.1);
+}
+
+.checkbox-input:checked:hover {
+  background: var(--mint);
+  opacity: 0.9;
 }
 </style>

@@ -30,7 +30,8 @@ let interval = null;
 const fastingSettings = ref({
   protocol: '16:8',
   fastingHours: 16,
-  eatingHours: 8
+  eatingHours: 8,
+  use24HourFormat: false
 });
 
 // Add computed properties for recommended windows
@@ -64,10 +65,11 @@ const recommendedWindows = computed(() => {
 
 // Add format time helper
 const formatTime = (date) => {
+  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
   return date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: !settings.use24HourFormat
   });
 };
 
@@ -238,17 +240,27 @@ const startOrEdit = computed(() => (startTime.value ? "Edit" : "Start"));
 const toggleDisabled = computed(() => typeof (fastLogId) !== null);
 
 // Format times for display
-const formattedStartTime = computed(() =>
-  startTime.value ? startTime.value.toLocaleString("en-US", {
-    weekday: "long", hour: "numeric", minute: "2-digit", hour12: true
-  }) : "Not started"
-);
+const formattedStartTime = computed(() => {
+  if (!startTime.value) return "Not started";
+  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
+  return startTime.value.toLocaleString("en-US", {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: !settings.use24HourFormat
+  });
+});
 
-const formattedEndTime = computed(() =>
-  fastingEndTime.value ? fastingEndTime.value.toLocaleString("en-US", {
-    weekday: "long", hour: "numeric", minute: "2-digit", hour12: true
-  }) : "N/A"
-);
+const formattedEndTime = computed(() => {
+  if (!fastingEndTime.value) return "N/A";
+  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
+  return fastingEndTime.value.toLocaleString("en-US", {
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: !settings.use24HourFormat
+  });
+});
 
 // Add time remaining calculation
 const calculateTimeRemaining = () => {
@@ -297,18 +309,26 @@ const fastingPhase = computed(() => {
     <div class="modal">
       <h2>Edit Start Time</h2>
       <input type="datetime-local" v-model="newStartTime" />
-      <button @click="submitEdit">OK</button>
-      <button @click="isEditModalOpen = false">Cancel</button>
+      <div class="modal-buttons">
+        <button @click="isEditModalOpen = false">Cancel</button>
+        <button @click="submitEdit">OK</button>
+      </div>
     </div>
   </div>
   <!-- Confirmation Modal -->
   <div v-if="isConfirmModalOpen" class="modal-overlay" id="confirm">
     <div class="modal">
       <h2>Confirm Change</h2>
-      <p>Are you sure you want to update to {{ newStartTime }}?</p>
-      <button @click="confirmEditStartTime">Confirm</button>
-      <button @click="isConfirmModalOpen = false">Cancel</button>
+      <p>Are you sure you want to update your fast start time to:<br><strong>{{ newStartTime }}</strong>?</p>
+      <div class="modal-buttons">
+        <button @click="isConfirmModalOpen = false">Cancel</button>
+        <button @click="confirmEditStartTime">Confirm</button>
+      </div>
     </div>
+  </div>
+  <!-- Loading Overlay -->
+  <div v-if="isLoading" class="loading-overlay">
+    <div class="loading-spinner"></div>
   </div>
   <div class="container">
     <div class="left">
@@ -378,7 +398,50 @@ const fastingPhase = computed(() => {
 </template>
 
 <style>
-/* ... existing styles ... */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 100px);
+}
+
+.left {
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+h1 {
+  color: var(--mint);
+  margin: 0;
+  font-size: 2em;
+}
+
+.protocol-label {
+  background: rgba(0, 255, 200, 0.1);
+  border: 1px solid var(--mint);
+  color: var(--mint);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.welcome {
+  color: var(--mint);
+  margin-bottom: 24px;
+}
 
 .recommended-windows {
   background: rgba(0, 255, 200, 0.05);
@@ -437,7 +500,6 @@ const fastingPhase = computed(() => {
   font-size: 0.9em;
   text-align: center;
   min-width: 0;
-  /* Allow flex items to shrink below their content size */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -502,24 +564,6 @@ const fastingPhase = computed(() => {
   margin-top: 8px;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.protocol-label {
-  background: rgba(0, 255, 200, 0.1);
-  border: 1px solid var(--mint);
-  color: var(--mint);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.9em;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
 .window-tip {
   color: var(--mint);
   opacity: 0.7;
@@ -550,23 +594,136 @@ const fastingPhase = computed(() => {
   text-align: center;
 }
 
-/* ... rest of existing styles ... */
-
-/* Update container styles to ensure proper width constraints */
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  width: 100%;
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
-.left {
-  width: 100%;
+.modal {
+  background: var(--lite-dark);
+  padding: 24px;
+  border-radius: 12px;
+  border: 2px solid var(--mint);
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.recommended-windows,
-.active-fast {
+.modal h2 {
+  color: var(--mint);
+  margin: 0 0 20px 0;
+  font-size: 1.4em;
+  text-align: center;
+}
+
+.modal input[type="datetime-local"] {
   width: 100%;
-  box-sizing: border-box;
+  padding: 12px;
+  margin-bottom: 20px;
+  border: 1px solid var(--mint);
+  border-radius: 8px;
+  background: rgba(0, 255, 200, 0.05);
+  color: var(--mint);
+  font-size: 1em;
+}
+
+.modal input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+}
+
+.modal input[type="datetime-local"]:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(0, 255, 200, 0.2);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.modal button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--mint);
+  background: var(--mint);
+  color: var(--lite-dark);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.modal button:hover {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.modal button:last-child {
+  background: transparent;
+  color: var(--mint);
+}
+
+.modal button:last-child:hover {
+  background: rgba(0, 255, 200, 0.1);
+}
+
+/* Confirmation modal specific styles */
+#confirm .modal {
+  text-align: center;
+}
+
+#confirm p {
+  color: var(--mint);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+#confirm .modal-buttons {
+  justify-content: center;
+}
+
+/* Loading state */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  border: 4px solid rgba(0, 255, 200, 0.1);
+  border-top: 4px solid var(--mint);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

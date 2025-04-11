@@ -23,7 +23,8 @@ const selectedLog = ref(null);
 const fastingSettings = ref({
   protocol: '16:8',
   fastingHours: 16,
-  eatingHours: 8
+  eatingHours: 8,
+  use24HourFormat: false
 });
 
 const activeFasts = computed(() => {
@@ -101,12 +102,13 @@ const calculateFastingTime = (startTime, endTime) => {
 const formatDateTime = (dateString) => {
   if (!dateString) return 'Active';
   const date = new Date(dateString);
+  const settings = JSON.parse(localStorage.getItem('fastingSettings')) || fastingSettings.value;
   return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: !settings.use24HourFormat
   });
 };
 
@@ -196,7 +198,7 @@ onUnmounted(() => {
             <p>Start Time: <span class="highlight">{{ formatDateTime(log.startTime) }}</span></p>
             <p>End Time: <span class="highlight">{{ formatDateTime(log.endTime) }}</span></p>
             <p>Total Fasting Time: <span class="highlight-time">{{ calculateFastingTime(log.startTime, log.endTime)
-                }}</span></p>
+            }}</span></p>
           </div>
         </div>
       </div>
