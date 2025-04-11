@@ -5,6 +5,8 @@ import Footer from "../components/Footer.vue";
 import DateRangeModal from "../components/DateRangeModal.vue";
 import EditLogModal from "../components/EditLogModal.vue";
 import WeeklyFastingSummary from "../components/WeeklyFastingSummary.vue";
+import { formatDate, formatTime, calculateDuration } from '../utils/dateUtils'
+import { getLogs, deleteLog as deleteLogApi } from '../services/api'
 
 const router = useRouter();
 const token = localStorage.getItem("userToken") || null;
@@ -26,6 +28,8 @@ const fastingSettings = ref({
   eatingHours: 8,
   use24HourFormat: false
 });
+const isDeleteModalOpen = ref(false)
+const logToDelete = ref(null)
 
 const activeFasts = computed(() => {
   return logs.value.filter(log => !log.endTime).length;
@@ -140,6 +144,28 @@ const saveEdit = async (editData) => {
   }
 };
 
+const confirmDelete = (log) => {
+  logToDelete.value = log
+  isDeleteModalOpen.value = true
+}
+
+const deleteLog = async () => {
+  if (!logToDelete.value) return
+
+  try {
+    await deleteLogApi(logToDelete.value.id)
+    logs.value = logs.value.filter(log => log.id !== logToDelete.value.id)
+    isDeleteModalOpen.value = false
+    logToDelete.value = null
+  } catch (error) {
+    console.error('Error deleting log:', error)
+  }
+}
+
+const handleDelete = (logId) => {
+  logs.value = logs.value.filter(log => log.id !== logId);
+};
+
 onMounted(() => {
   if (userId) {
     // Load fasting settings
@@ -165,7 +191,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="logs-container">
+  <div class="container">
     <h1>FastM8</h1>
     <p class="welcome">Welcome <b>{{ userName }}</b>!</p>
     <div class="controls">
@@ -208,20 +234,23 @@ onUnmounted(() => {
     <DateRangeModal v-model:show="showDateModal" v-model:selectedRange="selectedDuration" v-model:startDate="startDate"
       v-model:endDate="endDate" @update:selectedRange="handleDurationChange" />
 
-    <EditLogModal v-model:show="showEditModal" :log="selectedLog" @save="saveEdit" />
+    <EditLogModal v-model:show="showEditModal" :log="selectedLog" @save="saveEdit" @delete="handleDelete" />
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="isDeleteModalOpen" class="modal-overlay">
+      <div class="modal">
+        <h2>Delete Log</h2>
+        <p>Are you sure you want to delete this fasting log?</p>
+        <div class="modal-buttons">
+          <button @click="isDeleteModalOpen = false" class="button secondary">Cancel</button>
+          <button @click="deleteLog" class="button delete">Delete</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style>
-.logs-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
 #log-wrapper {
   width: auto;
   height: 60vh;
@@ -377,15 +406,62 @@ h1 {
   background: rgba(0, 255, 200, 0.1);
 }
 
-.container {
-  flex: 1;
-  margin-bottom: 20px;
-  width: 100%;
-  box-sizing: border-box;
-}
 
 /* Add spacing between WeeklyFastingSummary and log wrapper */
 .WeeklyFastingSummary {
   margin-bottom: 16px;
+}
+
+.log-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.button.delete {
+  background: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+.button.delete:hover {
+  background: #ff5252;
+  border-color: #ff5252;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--lite-dark);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--mint);
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal h2 {
+  color: var(--mint);
+  margin: 0 0 16px 0;
+}
+
+.modal p {
+  color: var(--mint);
+  margin: 0 0 20px 0;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
 }
 </style>

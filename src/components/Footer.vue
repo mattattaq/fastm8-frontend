@@ -14,3 +14,20 @@
         </router-link>
     </div>
 </template>
+
+<style scoped>
+.footer {
+    min-height: 60px;
+    width: 100%;
+    flex-direction: row;
+    display: flex;
+    justify-content: space-between;
+}
+
+.footer svg {
+    width: 40px;
+    height: 40px;
+    margin: 10px 10px;
+    color: var(--mint);
+}
+</style>

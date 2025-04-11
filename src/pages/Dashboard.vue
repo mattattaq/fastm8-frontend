@@ -399,10 +399,10 @@ const stopAlternating = () => {
   <div v-if="isEditModalOpen" class="modal-overlay">
     <div class="modal">
       <h2>Edit Start Time</h2>
-      <input type="datetime-local" v-model="newStartTime" />
+      <input type="datetime-local" v-model="newStartTime" class="input" />
       <div class="modal-buttons">
-        <button @click="isEditModalOpen = false">Cancel</button>
-        <button @click="submitEdit">OK</button>
+        <button @click="isEditModalOpen = false" class="button secondary">Cancel</button>
+        <button @click="submitEdit" class="button">OK</button>
       </div>
     </div>
   </div>
@@ -412,8 +412,8 @@ const stopAlternating = () => {
       <h2>Confirm Change</h2>
       <p>Are you sure you want to update your fast start time to:<br><strong>{{ newStartTime }}</strong>?</p>
       <div class="modal-buttons">
-        <button @click="isConfirmModalOpen = false">Cancel</button>
-        <button @click="confirmEditStartTime">Confirm</button>
+        <button @click="isConfirmModalOpen = false" class="button secondary">Cancel</button>
+        <button @click="confirmEditStartTime" class="button">Confirm</button>
       </div>
     </div>
   </div>
@@ -429,7 +429,7 @@ const stopAlternating = () => {
           {{ fastingSettings.protocol }}
         </div>
       </div>
-      <p>Welcome <b>{{ userName }}</b>!</p>
+      <p class="welcome">Welcome <b>{{ userName }}</b>!</p>
 
       <!-- Recommended windows section -->
       <div class="recommended-windows" v-if="!startTime">
@@ -455,7 +455,7 @@ const stopAlternating = () => {
           </div>
         </div>
         <div class="action-buttons">
-          <button class="start-button" @click="toggleFast">Start Fast</button>
+          <button class="button" @click="toggleFast">Start Fast</button>
         </div>
       </div>
 
@@ -476,8 +476,8 @@ const stopAlternating = () => {
           <p class="motivational-message">{{ motivationalMessage }}</p>
         </div>
         <div class="action-buttons">
-          <button class="edit-button" @click="toggleFast">Edit</button>
-          <button class="stop-button" :class="{ disabled: toggleDisabled }" @click="stopFast">
+          <button class="button" @click="toggleFast">Edit</button>
+          <button class="button stop" :class="{ disabled: toggleDisabled }" @click="stopFast">
             End Fast
           </button>
         </div>
@@ -487,15 +487,15 @@ const stopAlternating = () => {
   <Footer />
 </template>
 
-<style>
+<style scoped>
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 0;
+  padding: 20px;
+  min-height: 100vh;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 100px);
+  flex-direction: column;
+  padding-bottom: 80px;
   background: linear-gradient(135deg, var(--dark) 0%, #1a1f2e 100%);
   box-sizing: border-box;
 }
@@ -506,6 +506,7 @@ const stopAlternating = () => {
   text-align: center;
   box-sizing: border-box;
   padding: 0 16px;
+  margin: 0 auto;
 }
 
 .header {
@@ -658,43 +659,17 @@ h1:hover {
   flex-wrap: nowrap;
 }
 
-.start-button,
-.edit-button,
-.stop-button {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--mint);
-  background: var(--mint);
-  color: var(--lite-dark);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: clamp(0.8em, 3vw, 0.9em);
-  text-align: center;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.start-button:hover,
-.edit-button:hover {
-  background: var(--green);
-  border-color: var(--green);
-}
-
-.stop-button {
+.button.stop {
   background: #ff6b6b;
   border-color: #ff6b6b;
 }
 
-.stop-button:hover {
+.button.stop:hover {
   background: #ff5252;
   border-color: #ff5252;
 }
 
-.stop-button.disabled {
+.button.disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -937,9 +912,7 @@ h1:hover {
     gap: 8px;
   }
 
-  .start-button,
-  .edit-button,
-  .stop-button {
+  .button {
     width: 100%;
   }
 }

@@ -120,15 +120,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="settings-container">
+  <div class="container">
     <h1>FastM8</h1>
     <p class="welcome">Welcome <b>{{ userName }}</b>!</p>
 
-    <div class="settings-section">
+    <div class="section">
       <h2>Fasting Settings</h2>
       <div class="form-group">
         <label>Select Fasting Protocol</label>
-        <select v-model="selectedProtocol" class="protocol-select">
+        <select v-model="selectedProtocol" class="input">
           <option v-for="protocol in protocols" :key="protocol.value" :value="protocol.value">
             {{ protocol.label }}
           </option>
@@ -158,11 +158,11 @@ onUnmounted(() => {
       <div v-if="selectedProtocol === 'custom'" class="custom-settings">
         <div class="form-group">
           <label>Fasting Hours</label>
-          <input type="number" v-model="customFastingHours" min="1" max="23" class="number-input">
+          <input type="number" v-model="customFastingHours" min="1" max="23" class="input">
         </div>
         <div class="form-group">
           <label>Eating Hours</label>
-          <input type="number" v-model="customEatingHours" min="1" max="23" class="number-input">
+          <input type="number" v-model="customEatingHours" min="1" max="23" class="input">
         </div>
       </div>
 
@@ -171,111 +171,26 @@ onUnmounted(() => {
         <div class="time-input-group">
           <div class="time-input">
             <label>Start Time</label>
-            <input type="time" v-model="settings.value.preferredEatingWindow.startTime"
-              :class="{ 'time-input-field': true }">
+            <input type="time" v-model="settings.value.preferredEatingWindow.startTime" class="input">
           </div>
           <div class="time-input">
             <label>End Time</label>
-            <input type="time" v-model="settings.value.preferredEatingWindow.endTime"
-              :class="{ 'time-input-field': true }">
+            <input type="time" v-model="settings.value.preferredEatingWindow.endTime" class="input">
           </div>
         </div>
       </div>
 
-      <button @click="saveSettingsToServer" class="save-button">Save Settings</button>
+      <button @click="saveSettingsToServer" class="button">Save Settings</button>
     </div>
   </div>
   <Footer />
 </template>
 
 <style scoped>
-.settings-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-h1 {
-  padding: 0;
-  margin: 0 0 16px 0;
-  color: var(--mint);
-}
-
 .welcome {
   margin-bottom: 24px;
   font-size: 1.1em;
-}
-
-.settings-section {
-  background: var(--lite-dark);
-  border-radius: 8px;
-  padding: 24px;
-  border: 1px solid var(--mint);
-  margin-bottom: 20px;
-}
-
-h2 {
   color: var(--mint);
-  margin: 0 0 20px 0;
-  text-align: center;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--mint);
-}
-
-.protocol-select {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--mint);
-  background: var(--lite-dark);
-  color: var(--mint);
-  font-size: 1em;
-}
-
-.number-input {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--mint);
-  background: var(--lite-dark);
-  color: var(--mint);
-  font-size: 1em;
-}
-
-.custom-settings {
-  margin-top: 16px;
-  padding: 16px;
-  border: 1px solid var(--mint);
-  border-radius: 8px;
-}
-
-.save-button {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--mint);
-  border: 1px solid var(--mint);
-  color: var(--lite-dark);
-  font-size: 1em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 16px;
-}
-
-.save-button:hover {
-  background: var(--green);
-  border-color: var(--green);
 }
 
 .protocol-info {
@@ -325,10 +240,6 @@ label {
   line-height: 1.4;
   padding-left: 0;
   position: relative;
-}
-
-.benefits li::before {
-  display: none;
 }
 
 .setting-item {
@@ -398,17 +309,10 @@ label {
   font-size: 0.9em;
 }
 
-.time-input-field {
-  width: 100%;
-  padding: 8px;
-  border-radius: 4px;
+.custom-settings {
+  margin-top: 16px;
+  padding: 16px;
   border: 1px solid var(--mint);
-  background: rgba(0, 255, 200, 0.05);
-  color: var(--mint);
-}
-
-.time-input-field::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: 0.7;
+  border-radius: 8px;
 }
 </style>
