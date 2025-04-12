@@ -23,30 +23,60 @@ const getWeekDates = () => {
     return dates;
 };
 
+const mergeOverlappingRanges = (ranges) => {
+    if (!ranges.length) return [];
+
+    ranges.sort((a, b) => a.start - b.start);
+
+    const merged = [ranges[0]];
+
+    for (let i = 1; i < ranges.length; i++) {
+        const last = merged[merged.length - 1];
+        const current = ranges[i];
+
+        if (current.start <= last.end) {
+            last.end = new Date(Math.max(last.end, current.end));
+        } else {
+            merged.push(current);
+        }
+    }
+
+    return merged;
+};
+
 const calculateDailyFastingHours = (date, logs) => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
 
-    let totalHours = 0;
+    const ranges = [];
 
     logs.forEach(log => {
         const start = new Date(log.startTime);
         const end = log.endTime ? new Date(log.endTime) : new Date();
-        console.log(start, end, "start and end");
 
-        // If the fast spans this day
-        if (start <= dayEnd && (end >= dayStart || !log.endTime)) {
-            // Calculate the overlap with this day
+        if (start < dayEnd && end > dayStart) {
             const overlapStart = start > dayStart ? start : dayStart;
             const overlapEnd = end < dayEnd ? end : dayEnd;
-            const hours = (overlapEnd - overlapStart) / (1000 * 60 * 60);
-            totalHours += hours;
+
+            if (overlapStart < overlapEnd) {
+                ranges.push({ start: overlapStart, end: overlapEnd });
+            }
+
+            console.log(`Checking fast from ${start} to ${end}`);
+            console.log(`Overlap for ${date.toDateString()}: ${overlapStart} to ${overlapEnd}`);
         }
     });
 
-    // Cap at 24 hours per day and calculate percentage
+    // Merge overlapping ranges
+    const mergedRanges = mergeOverlappingRanges(ranges);
+
+    // Sum total hours from merged ranges
+    const totalHours = mergedRanges.reduce((sum, range) => {
+        return sum + (range.end - range.start) / (1000 * 60 * 60);
+    }, 0);
+
     const cappedHours = Math.min(Math.round(totalHours * 10) / 10, 24);
     return {
         hours: cappedHours,
@@ -67,9 +97,6 @@ const weeklyData = computed(() => {
     });
 });
 
-const maxHours = computed(() => {
-    return 24; // Set max to 24 hours since that's the maximum possible in a day
-});
 </script>
 
 <template>
