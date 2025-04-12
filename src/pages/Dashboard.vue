@@ -342,7 +342,7 @@ const formattedEndTime = computed(() =>
               <div class="time-range eating">
                 {{ formattedEatingWindow?.start }} - {{ formattedEatingWindow?.end }}
               </div>
-              <div class="window-duration">{{ fastingSettings.eatingHours }} hours</div>
+              <div v-if="fastingSettings" class="window-duration">{{ fastingSettings.eatingHours }} hours</div>
               <p class="message">Make sure to eat nutrient-dense foods during this window</p>
             </div>
           </div>
@@ -358,7 +358,7 @@ const formattedEndTime = computed(() =>
                   Not available
                 </template>
               </div>
-              <div class="window-duration">{{ fastingSettings.fastingHours }} hours</div>
+              <div v-if="fastingSettings" class="window-duration">{{ fastingSettings.fastingHours }} hours</div>
               <p class="message">Stay hydrated and keep busy during your fast</p>
             </div>
           </div>
