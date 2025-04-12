@@ -76,8 +76,8 @@ const login = async () => {
 </script>
 
 <template>
-  <div>
-    <h2 :class="{'eating': isFocused}">{{ dynamicText }}</h2>
+  <div class="container">
+    <h2 :class="{ 'eating': isFocused }">{{ dynamicText }}</h2>
 
     <form @submit.prevent="login">
       <label>Email:</label>
@@ -98,13 +98,28 @@ h2 {
   transition: transform 0.3s ease-in-out;
 }
 
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .eating {
   animation: eatM 0.5s ease-in-out forwards;
 }
 
 @keyframes eatM {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1) rotate(-10deg); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1) rotate(-10deg);
+  }
 }
 </style>

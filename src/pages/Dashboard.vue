@@ -328,59 +328,57 @@ const formattedEndTime = computed(() =>
     </div>
   </div>
   <div class="container">
-    <div class="left">
-      <h1>Fast<span class="mouth">{{ mouthChar }}</span>8</h1>
-      <p>Welcome <b>{{ userName }}</b>! <span v-if="protocol" class="protocol-label">{{ protocol }}</span></p>
+    <h1>Fast<span class="mouth">{{ mouthChar }}</span>8</h1>
+    <p>Welcome <b>{{ userName }}</b>! <span v-if="protocol" class="protocol-label">{{ protocol }}</span></p>
 
 
-      <div v-if="startTime">
-        <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
-        <ProgressCircle :progress="progress" />
-        <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
-        <p class="sub"><b>Endtime:</b> {{ formattedEndTime }}</p>
-        <div class="action-buttons">
-          <button class="button" @click="toggleFast">Edit</button>
-          <button class="button stop" @click="stopFast">
-            End Fast
-          </button>
-        </div>
-      </div>
-      <div v-else>
-        <h2>Recommended Windows</h2>
-        <div class="recommended-windows">
-          <div class="window-section">
-            <h3>Current Eating Window</h3>
-            <div class="window-content">
-              <div class="time-range eating">
-                {{ formattedEatingWindow?.start }} - {{ formattedEatingWindow?.end }}
-              </div>
-              <div v-if="fastingSettings" class="window-duration">{{ fastingSettings.eatingHours }} hours</div>
-              <p class="message">Make sure to eat nutrient-dense foods during this window</p>
-            </div>
-          </div>
-
-          <div class="window-section">
-            <h3>Next Fasting Window</h3>
-            <div class="window-content">
-              <div class="time-range fasting">
-                <template v-if="formattedEatingWindow">
-                  {{ formattedEatingWindow.end }} - {{ formattedEatingWindow.start }}
-                </template>
-                <template v-else>
-                  Not available
-                </template>
-              </div>
-              <div v-if="fastingSettings" class="window-duration">{{ fastingSettings.fastingHours }} hours</div>
-              <p class="message">Stay hydrated and keep busy during your fast</p>
-            </div>
-          </div>
-
-          <button class="start-fast" @click="toggleFast">Start Fast</button>
-        </div>
+    <div v-if="startTime">
+      <p>You started your fast on <strong>{{ formattedStartTime }}</strong></p>
+      <ProgressCircle :progress="progress" />
+      <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
+      <p class="sub"><b>Endtime:</b> {{ formattedEndTime }}</p>
+      <div class="action-buttons">
+        <button class="button" @click="toggleFast">Edit</button>
+        <button class="button stop" @click="stopFast">
+          End Fast
+        </button>
       </div>
     </div>
-    <Footer />
+    <div v-else>
+      <h2>Recommended Windows</h2>
+      <div class="recommended-windows">
+        <div class="window-section">
+          <h3>Current Eating Window</h3>
+          <div class="window-content">
+            <div class="time-range eating">
+              {{ formattedEatingWindow?.start }} - {{ formattedEatingWindow?.end }}
+            </div>
+            <div v-if="fastingSettings" class="window-duration">{{ fastingSettings.eatingHours }} hours</div>
+            <p class="message">Make sure to eat nutrient-dense foods during this window</p>
+          </div>
+        </div>
+
+        <div class="window-section">
+          <h3>Next Fasting Window</h3>
+          <div class="window-content">
+            <div class="time-range fasting">
+              <template v-if="formattedEatingWindow">
+                {{ formattedEatingWindow.end }} - {{ formattedEatingWindow.start }}
+              </template>
+              <template v-else>
+                Not available
+              </template>
+            </div>
+            <div v-if="fastingSettings" class="window-duration">{{ fastingSettings.fastingHours }} hours</div>
+            <p class="message">Stay hydrated and keep busy during your fast</p>
+          </div>
+        </div>
+
+        <button class="start-fast" @click="toggleFast">Start Fast</button>
+      </div>
+    </div>
   </div>
+  <Footer />
 </template>
 
 <style scoped>
@@ -394,17 +392,6 @@ const formattedEndTime = computed(() =>
   font-weight: 600;
   letter-spacing: 0.5px;
   white-space: nowrap;
-}
-
-.container {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 2rem;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
 }
 
 h1 {

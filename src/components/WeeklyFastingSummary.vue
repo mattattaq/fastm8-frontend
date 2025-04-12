@@ -64,8 +64,8 @@ const calculateDailyFastingHours = (date, logs) => {
                 ranges.push({ start: overlapStart, end: overlapEnd });
             }
 
-            console.log(`Checking fast from ${start} to ${end}`);
-            console.log(`Overlap for ${date.toDateString()}: ${overlapStart} to ${overlapEnd}`);
+            // console.log(`Checking fast from ${start} to ${end}`);
+            // console.log(`Overlap for ${date.toDateString()}: ${overlapStart} to ${overlapEnd}`);
         }
     });
 
@@ -97,9 +97,33 @@ const weeklyData = computed(() => {
     });
 });
 
+const calculateStreak = (logs, targetHours) => {
+    let streak = 0;
+    const today = new Date();
+
+    for (let i = 0; ; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+
+        const { hours } = calculateDailyFastingHours(date, logs);
+
+        if (hours >= targetHours) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+
+    return streak;
+};
+const currentStreak = calculateStreak(props.logs, props.targetHours);
 </script>
 
 <template>
+    <div class="streak-info">
+        <span class="streak-label">Current Streak: <span class="target-label">{{ currentStreak }}</span> day<span
+                v-if="currentStreak !== 1">s</span></span>
+    </div>
     <div class="weekly-summary">
         <h3>Weekly Fasting Summary</h3>
         <div class="target-info">
@@ -117,6 +141,7 @@ const weeklyData = computed(() => {
             </div>
         </div>
     </div>
+
 </template>
 
 <style scoped>
@@ -140,6 +165,11 @@ h3 {
     height: 200px;
     padding: 0 16px;
     position: relative;
+}
+
+.streak-info {
+    text-align: center;
+    margin-bottom: 16px;
 }
 
 .bar-container {

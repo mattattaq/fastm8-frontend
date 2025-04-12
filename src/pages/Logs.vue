@@ -219,52 +219,50 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="container">
-      <div v-if="isLoading" class="loading">Loading logs...</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
-      <div v-else-if="logs.length === 0" class="no-logs">No logs found for the selected period</div>
-      <div v-else>
-        <WeeklyFastingSummary :logs="logs" :target-hours="fastingSettings.fastingHours" />
-        <div id="log-wrapper">
-          <div v-for="(log, index) in logs" :key="index"
-            :class="['log', { 'active': !log.endTime, 'completed': log.endTime }]">
-            <div class="log-header">
-              <span class="status-badge" :class="{ 'active': !log.endTime, 'completed': log.endTime }">
-                {{ !log.endTime ? 'Active' : 'Completed' }}
-              </span>
-              <button class="edit-button" @click="handleEdit(log)">Edit</button>
-            </div>
-            <p>Start Time: <span class="highlight">{{ formatDateTime(log.startTime) }}</span></p>
-            <p>End Time: <span class="highlight">{{ formatDateTime(log.endTime) }}</span></p>
-            <p>Total Fasting Time: <span class="highlight-time">{{ calculateFastingTime(log.startTime, log.endTime)
-                }}</span></p>
+    <div v-if="isLoading" class="loading">Loading logs...</div>
+    <div v-else-if="error" class="error">{{ error }}</div>
+    <div v-else-if="logs.length === 0" class="no-logs">No logs found for the selected period</div>
+    <div v-else>
+      <WeeklyFastingSummary :logs="logs" :target-hours="fastingSettings.fastingHours" />
+      <div id="log-wrapper">
+        <div v-for="(log, index) in logs" :key="index"
+          :class="['log', { 'active': !log.endTime, 'completed': log.endTime }]">
+          <div class="log-header">
+            <span class="status-badge" :class="{ 'active': !log.endTime, 'completed': log.endTime }">
+              {{ !log.endTime ? 'Active' : 'Completed' }}
+            </span>
+            <button class="edit-button" @click="handleEdit(log)">Edit</button>
           </div>
+          <p>Start Time: <span class="highlight">{{ formatDateTime(log.startTime) }}</span></p>
+          <p>End Time: <span class="highlight">{{ formatDateTime(log.endTime) }}</span></p>
+          <p>Total Fasting Time: <span class="highlight-time">{{ calculateFastingTime(log.startTime, log.endTime)
+              }}</span></p>
         </div>
       </div>
     </div>
-    <Footer />
-
-    <DateRangeModal v-model:show="showDateModal" v-model:selectedRange="selectedDuration" v-model:startDate="startDate"
-      v-model:endDate="endDate" @update:selectedRange="handleDurationChange" />
-
-    <!-- Delete Confirmation Modal -->
-    <div v-if="isDeleteModalOpen" class="modal-overlay">
-      <div class="modal">
-        <h2>Delete Active Fast</h2>
-        <p>Are you sure you want to delete this active fasting log? This action cannot be undone.</p>
-        <div class="modal-buttons">
-          <button @click="isDeleteModalOpen = false" class="button secondary">Cancel</button>
-          <button @click="handleDelete" class="button delete">Delete</button>
-        </div>
-      </div>
-    </div>
-
-    <EditLogModal v-model:show="showEditModal" :log="selectedLog" @save="saveEdit" @delete="(log) => {
-      if (!log.endTime) {
-        confirmDelete(log);
-      }
-    }" />
   </div>
+  <Footer />
+
+  <DateRangeModal v-model:show="showDateModal" v-model:selectedRange="selectedDuration" v-model:startDate="startDate"
+    v-model:endDate="endDate" @update:selectedRange="handleDurationChange" />
+
+  <!-- Delete Confirmation Modal -->
+  <div v-if="isDeleteModalOpen" class="modal-overlay">
+    <div class="modal">
+      <h2>Delete Active Fast</h2>
+      <p>Are you sure you want to delete this active fasting log? This action cannot be undone.</p>
+      <div class="modal-buttons">
+        <button @click="isDeleteModalOpen = false" class="button secondary">Cancel</button>
+        <button @click="handleDelete" class="button delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <EditLogModal v-model:show="showEditModal" :log="selectedLog" @save="saveEdit" @delete="(log) => {
+    if (!log.endTime) {
+      confirmDelete(log);
+    }
+  }" />
 </template>
 
 <style>
