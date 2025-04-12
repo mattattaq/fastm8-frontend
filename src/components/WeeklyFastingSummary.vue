@@ -34,6 +34,7 @@ const calculateDailyFastingHours = (date, logs) => {
     logs.forEach(log => {
         const start = new Date(log.startTime);
         const end = log.endTime ? new Date(log.endTime) : new Date();
+        console.log(start, end, "start and end");
 
         // If the fast spans this day
         if (start <= dayEnd && (end >= dayStart || !log.endTime)) {

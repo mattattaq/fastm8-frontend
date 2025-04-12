@@ -187,12 +187,17 @@ const stopFast = async () => {
     console.log("Button is disabled or fastLogId is invalid.");
     return;
   }
-
+  const endTime = new Date().toISOString();
+  console.log("stopping fast");
+  console.log(fastLogId, "fastLogId");
+  console.log(toggleDisabled.value, "toggleDisabled");
+  console.log(startTime.value, "startTime");
+  console.log(endTime.value, "endTime");
   try {
     await editLogs(
       [parseInt(fastLogId)],
       [{
-        endTime: new Date().toISOString(),
+        endTime: endTime,
         isComplete: true
       }],
       token
@@ -288,6 +293,7 @@ const confirmEditStartTime = async () => {
 const startOrEdit = computed(() => (startTime.value ? "Edit" : "Start"));
 const toggleDisabled = computed(() => fastLogId === null);
 
+
 // Format times for display
 const formattedStartTime = computed(() =>
   startTime.value ? startTime.value.toLocaleString("en-US", {
@@ -332,6 +338,12 @@ const formattedEndTime = computed(() =>
         <ProgressCircle :progress="progress" />
         <p>{{ elapsedTime.hours }}:{{ elapsedTime.minutes }}:{{ elapsedTime.seconds }}</p>
         <p class="sub"><b>Endtime:</b> {{ formattedEndTime }}</p>
+        <div class="action-buttons">
+          <button class="button" @click="toggleFast">Edit</button>
+          <button class="button stop" @click="stopFast">
+            End Fast
+          </button>
+        </div>
       </div>
       <div v-else>
         <h2>Recommended Windows</h2>
